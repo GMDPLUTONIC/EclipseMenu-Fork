@@ -5,7 +5,7 @@
 #include <Geode/modify/GJBaseGameLayer.hpp>
 
 
-class Noclip : public hack::Hack {
+class Test Mod : public hack::Hack {
         void init() override {
             auto tab = gui::MenuTab::find("Global");
             tab->addToggle("Test Mod", "global.testmod")->setDescription("Test Mod")->handleKeybinds();
