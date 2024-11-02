@@ -252,7 +252,6 @@ namespace eclipse::labels {
         m_variables["speedhack"] = rift::Value::boolean(config::get("global.speedhack.toggle", false));
         m_variables["speedhackSpeed"] = rift::Value::floating(config::get("global.speedhack", 1.f));
         m_variables["framestepper"] = rift::Value::boolean(config::get("player.framestepper", false));
-        m_variables["botplayback"] = rift::Value::boolean(config::get("bot.state", 2));
 
     static std::string cachedBase64Decode(const std::string& str) {
         static std::string s_lastStr;
