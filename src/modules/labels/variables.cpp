@@ -293,7 +293,6 @@ namespace eclipse::labels {
         m_variables["practicePercent"] = rift::Value::integer(level->m_practicePercent);
         m_variables["bestPercent"] = rift::Value::integer(level->m_normalPercent);
         m_variables["bestTime"] = rift::Value::floating(level->m_bestTime);
-        m_variables["test"] = rift::Value::string(level->m_levelName);
         if (GJBaseGameLayer::get()->m_isPlatformer)
             m_variables["best"] = rift::Value::string(formatTime(level->m_bestTime));
         else
