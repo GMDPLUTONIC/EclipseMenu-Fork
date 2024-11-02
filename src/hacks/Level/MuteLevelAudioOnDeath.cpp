@@ -5,13 +5,13 @@
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/EffectGameObject.hpp>
 
-namespace eclipse::hacks::Player {
+namespace eclipse::hacks::Level {
 
     class MuteLevelAudioOnDeath : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Player");
+            auto tab = gui::MenuTab::find("Level");
 
-            tab->addToggle("Mute Level Audio On Death", "player.mutelevelaudioondeath")
+            tab->addToggle("Mute Level Audio On Death", "level.mutelevelaudioondeath")
                 ->setDescription("Mutes all level audio (Music + SFX) on player death. (Created by RayDeeUx)")
                 ->handleKeybinds();
         }
@@ -22,7 +22,7 @@ namespace eclipse::hacks::Player {
     REGISTER_HACK(MuteLevelAudioOnDeath)
 
     class $modify(MuteLevelAudioOnDeathPOHook, PlayerObject) {
-        ADD_HOOKS_DELEGATE("player.mutelevelaudioondeath")
+        ADD_HOOKS_DELEGATE("level.mutelevelaudioondeath")
 
         /*
         originally from erysedits by raydeeux.
@@ -84,7 +84,7 @@ namespace eclipse::hacks::Player {
     };
 
     class $modify(MuteLevelAudioOnDeathEGOHook, EffectGameObject) {
-        ADD_HOOKS_DELEGATE("player.mutelevelaudioondeath")
+        ADD_HOOKS_DELEGATE("level.mutelevelaudioondeath")
         
         /*
         as of october 14, 2024, and as a direct result of the

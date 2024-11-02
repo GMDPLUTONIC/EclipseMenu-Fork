@@ -4,13 +4,13 @@
 
 #include <Geode/modify/GJBaseGameLayer.hpp>
 
-namespace eclipse::hacks::Level {
+namespace eclipse::hacks::Cosmetic {
 
     class NoMirror : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Level");
+            auto tab = gui::MenuTab::find("Cosmetic");
 
-            tab->addToggle("No Mirror", "level.nomirror")->handleKeybinds();
+            tab->addToggle("No Mirror", "cosmetic.nomirror")->handleKeybinds();
         }
 
         [[nodiscard]] const char* getId() const override { return "No Mirror"; }
@@ -19,7 +19,7 @@ namespace eclipse::hacks::Level {
     REGISTER_HACK(NoMirror)
 
     class $modify(NoMirrorGJBGLHook, GJBaseGameLayer) {
-        ALL_DELEGATES_AND_SAFE_PRIO("level.nomirror")
+        ALL_DELEGATES_AND_SAFE_PRIO("cosmetic.nomirror")
 
         void toggleFlipped(bool, bool) {}
     };

@@ -11,23 +11,23 @@
 #include <Geode/modify/EnhancedGameObject.hpp>
 #include <Geode/modify/HardStreak.hpp>
 
-namespace eclipse::hacks::Player {
+namespace eclipse::hacks::Level {
     class ShowTrajectory : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Player");
+            auto tab = gui::MenuTab::find("Level");
 
-            gui::ToggleComponent* toggle = tab->addToggle("Show Trajectory", "player.showtrajectory")
+            gui::ToggleComponent* toggle = tab->addToggle("Show Trajectory", "level.showtrajectory")
                 ->setDescription("Shows where the player will be if they click/don't click.")
                 ->handleKeybinds();
 
-            config::setIfEmpty("player.showtrajectory.iterations", 300);
+            config::setIfEmpty("level.showtrajectory.iterations", 300);
 
             toggle->addOptions([](std::shared_ptr<gui::MenuTab> options) {
-                options->addInputInt("Iterations", "player.showtrajectory.iterations", 1, 1000);
+                options->addInputInt("Iterations", "level.showtrajectory.iterations", 1, 1000);
             });
         }
 
-        [[nodiscard]] bool isCheating() override { return config::get<bool>("player.showtrajectory", false); }
+        [[nodiscard]] bool isCheating() override { return config::get<bool>("level.showtrajectory", false); }
         [[nodiscard]] const char* getId() const override { return "Show Trajectory"; }
     };
 
@@ -109,7 +109,7 @@ namespace eclipse::hacks::Player {
 
             bool iterationActionDone = false;
 
-            const size_t iterations = config::get<int>("player.showtrajectory.iterations", 300);
+            const size_t iterations = config::get<int>("level.showtrajectory.iterations", 300);
 ;
 
             for (size_t i = 0; i < iterations; i++) {
@@ -378,7 +378,7 @@ namespace eclipse::hacks::Player {
         }
 
         void updateCamera(float dt) {
-            if (config::get<bool>("player.showtrajectory", false))
+            if (config::get<bool>("level.showtrajectory", false))
                 s_simulation.simulate();
             else
                 s_simulation.hide();

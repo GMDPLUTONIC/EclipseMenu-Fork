@@ -7,7 +7,7 @@
 
 #ifndef GEODE_IS_ANDROID
 
-namespace eclipse::hacks::Player {
+namespace eclipse::hacks::Level {
 
     double degToRad(double degrees) {
         return degrees * std::numbers::pi / 180;
@@ -50,15 +50,15 @@ namespace eclipse::hacks::Player {
 
     class ClickTeleport : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Player");
+            auto tab = gui::MenuTab::find("Level");
 
-            tab->addToggle("Click Teleport", "player.clicktp")
+            tab->addToggle("Click Teleport", "level.clicktp")
                 ->setDescription("Teleport to the mouse cursor's position when right clicking.")
                 ->handleKeybinds();
         }
 
         void update() override {
-            if (!config::get<bool>("player.clicktp", false)) return;
+            if (!config::get<bool>("level.clicktp", false)) return;
 
             // Force the cursor to be visible
             PlatformToolbox::showCursor();
@@ -72,7 +72,7 @@ namespace eclipse::hacks::Player {
             }
         }
 
-        [[nodiscard]] bool isCheating() override { return config::get<bool>("player.clicktp", false); }
+        [[nodiscard]] bool isCheating() override { return config::get<bool>("level.clicktp", false); }
         [[nodiscard]] const char* getId() const override { return "Click Teleport"; }
     };
 

@@ -4,13 +4,13 @@
 
 #include <Geode/modify/PlayerObject.hpp>
 
-namespace eclipse::hacks::Player {
+namespace eclipse::hacks::Cosmetic {
 
     class NoPlatformerJumpSquish : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Player");
+            auto tab = gui::MenuTab::find("Cosmetic");
 
-            tab->addToggle("No Platformer Jump Anim", "player.noplatformersquish")
+            tab->addToggle("No Platformer Jump Anim", "cosmetic.noplatformersquish")
                 ->setDescription("Disables the squishing animation when jumping in place inside platformer levels. Applies to both the level editor and actual levels. (Created by RayDeeUx)")
                 ->handleKeybinds();
         }
@@ -21,7 +21,7 @@ namespace eclipse::hacks::Player {
     REGISTER_HACK(NoPlatformerJumpSquish)
 
     class $modify(NoPlatformerJumpSquishPOHook, PlayerObject) {
-        ALL_DELEGATES_AND_SAFE_PRIO("player.noplatformersquish")
+        ALL_DELEGATES_AND_SAFE_PRIO("cosmetic.noplatformersquish")
         void animatePlatformerJump(float) {}
     };
 

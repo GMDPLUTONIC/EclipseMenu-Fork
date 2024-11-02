@@ -5,13 +5,13 @@
 #include <Geode/modify/EffectGameObject.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
 
-namespace eclipse::hacks::Player {
+namespace eclipse::hacks::Cosmetic {
 
     class NoHideTrigger : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Player");
+            auto tab = gui::MenuTab::find("Cosmetic");
 
-            tab->addToggle("No Hide Trigger", "player.nohidetrigger")
+            tab->addToggle("No Hide Trigger", "cosmetic.nohidetrigger")
                 ->setDescription("Keeps the player visible.")
                 ->handleKeybinds();
         }
@@ -22,7 +22,7 @@ namespace eclipse::hacks::Player {
     REGISTER_HACK(NoHideTrigger)
 
     class $modify(NoHideTriggerEGOHook, EffectGameObject) {
-        ALL_DELEGATES_AND_SAFE_PRIO("player.nohidetrigger")
+        ALL_DELEGATES_AND_SAFE_PRIO("cosmetic.nohidetrigger")
 
         void triggerObject(GJBaseGameLayer* bgl, int p1, gd::vector<int> const* p2) override {
             switch (m_objectID) {
@@ -36,7 +36,7 @@ namespace eclipse::hacks::Player {
     };
 
     class $modify(NoHideTriggerGJBGLHook, GJBaseGameLayer) {
-        ADD_HOOKS_DELEGATE("player.nohidetrigger")
+        ADD_HOOKS_DELEGATE("cosmetic.nohidetrigger")
 
         void processOptionsTrigger(GameOptionsTrigger* options) {
             auto originalHideP1 = options->m_hideP1;

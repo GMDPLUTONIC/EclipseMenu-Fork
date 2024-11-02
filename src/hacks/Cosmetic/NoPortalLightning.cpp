@@ -4,7 +4,7 @@
 
 #include <Geode/modify/GJBaseGameLayer.hpp>
 
-namespace eclipse::hacks::Level {
+namespace eclipse::hacks::Cosmetic {
 
     class NoPortalLightning final : public hack::Hack {
         void init() override {

@@ -5,7 +5,7 @@
 #include <Geode/modify/CCScheduler.hpp>
 #include <Geode/modify/UILayer.hpp>
 
-namespace eclipse::hacks::Player {
+namespace eclipse::hacks::Level {
 
     // for on-screen UI
     static bool s_frameStepperPressed = false;
@@ -14,37 +14,37 @@ namespace eclipse::hacks::Player {
     class FrameStepper : public hack::Hack {
     public:
         static bool isPressed() {
-            auto stepKey = config::get<keybinds::Keys>("player.framestepper.step_key", keybinds::Keys::C);
+            auto stepKey = config::get<keybinds::Keys>("level.framestepper.step_key", keybinds::Keys::C);
             return s_frameStepperPressed || keybinds::isKeyPressed(stepKey);
         }
 
         static bool isDown() {
-            auto stepKey = config::get<keybinds::Keys>("player.framestepper.step_key", keybinds::Keys::C);
+            auto stepKey = config::get<keybinds::Keys>("level.framestepper.step_key", keybinds::Keys::C);
             return s_frameStepperDown || keybinds::isKeyDown(stepKey);
         }
 
     private:
         void init() override {
-            config::setIfEmpty("player.framestepper", false);
-            config::setIfEmpty("player.framestepper.step_key", keybinds::Keys::C);
-            config::setIfEmpty("player.framestepper.hold", true);
-            config::setIfEmpty("player.framestepper.hold_delay", 0.25f);
-            config::setIfEmpty("player.framestepper.hold_speed", 5);
+            config::setIfEmpty("level.framestepper", false);
+            config::setIfEmpty("level.framestepper.step_key", keybinds::Keys::C);
+            config::setIfEmpty("level.framestepper.hold", true);
+            config::setIfEmpty("level.framestepper.hold_delay", 0.25f);
+            config::setIfEmpty("level.framestepper.hold_speed", 5);
 
-            auto tab = gui::MenuTab::find("Player");
+            auto tab = gui::MenuTab::find("Level");
 
-            tab->addToggle("Frame Stepper", "player.framestepper")
+            tab->addToggle("Frame Stepper", "level.framestepper")
                 ->setDescription("Allows you to step through the game frame by frame.")
                 ->handleKeybinds()
                 ->addOptions([](std::shared_ptr<gui::MenuTab> options) {
-                    options->addKeybind("Step Key", "player.framestepper.step_key");
-                    options->addToggle("Enable Hold", "player.framestepper.hold");
-                    options->addInputFloat("Hold Delay", "player.framestepper.hold_delay", 0.0f, FLT_MAX, "%.2f");
-                    options->addInputInt("Hold Speed", "player.framestepper.hold_speed", 0);
+                    options->addKeybind("Step Key", "level.framestepper.step_key");
+                    options->addToggle("Enable Hold", "level.framestepper.hold");
+                    options->addInputFloat("Hold Delay", "level.framestepper.hold_delay", 0.0f, FLT_MAX, "%.2f");
+                    options->addInputInt("Hold Speed", "level.framestepper.hold_speed", 0);
                 });
         }
 
-        [[nodiscard]] bool isCheating() override { return config::get<bool>("player.framestepper", false); }
+        [[nodiscard]] bool isCheating() override { return config::get<bool>("level.framestepper", false); }
         [[nodiscard]] const char* getId() const override { return "Frame Stepper"; }
     };
 
@@ -56,7 +56,7 @@ namespace eclipse::hacks::Player {
     class $modify(FrameStepperSchedulerHook, cocos2d::CCScheduler) {
         static void onModify(auto& self) {
             FIRST_PRIORITY("cocos2d::CCScheduler::update"); // required to avoid conflict with speedhack
-            HOOKS_TOGGLE_ALL("player.framestepper");
+            HOOKS_TOGGLE_ALL("level.framestepper");
         }
 
         void update(float dt) override {
@@ -78,9 +78,9 @@ namespace eclipse::hacks::Player {
 
             auto step = 240.f; // TODO: Change this after Physics Bypass is added
 
-            auto holdSpeed = config::get<int>("player.framestepper.hold_speed", 5);
+            auto holdSpeed = config::get<int>("level.framestepper.hold_speed", 5);
             bool shouldStep = false;
-            if (config::get<bool>("player.framestepper.hold", false)) {
+            if (config::get<bool>("level.framestepper.hold", false)) {
                 s_holdDelayTimer += dt;
                 bool firstPress = FrameStepper::isPressed();
 
@@ -88,7 +88,7 @@ namespace eclipse::hacks::Player {
                     s_holdDelayTimer = 0;
 
                 // Add a grace period after the first press to allow for holding
-                auto delay = config::get<float>("player.framestepper.hold_delay", 0.25f);
+                auto delay = config::get<float>("level.framestepper.hold_delay", 0.25f);
                 if (FrameStepper::isDown()) {
                     shouldStep = firstPress;
                     s_holdAdvanceTimer++;
@@ -173,7 +173,7 @@ namespace eclipse::hacks::Player {
         }
 
         void update(float dt) override {
-            this->setVisible(config::get<bool>("player.framestepper", false));
+            this->setVisible(config::get<bool>("level.framestepper", false));
         }
 
     public:

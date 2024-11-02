@@ -4,13 +4,13 @@
 
 #include <Geode/modify/GJBaseGameLayer.hpp>
 
-namespace eclipse::hacks::Level {
+namespace eclipse::hacks::Cosmetic {
 
     class InstantMirror : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Level");
+            auto tab = gui::MenuTab::find("Cosmetic");
 
-            tab->addToggle("Instant Mirror", "level.instantmirror")
+            tab->addToggle("Instant Mirror", "cosmetic.instantmirror")
                 ->handleKeybinds()
                 ->setDescription("Removes the mirror portal transition.");
         }
@@ -21,7 +21,7 @@ namespace eclipse::hacks::Level {
     REGISTER_HACK(InstantMirror)
 
     class $modify(InstantMirrorGJBGLHook, GJBaseGameLayer) {
-        ADD_HOOKS_DELEGATE("level.instantmirror")
+        ADD_HOOKS_DELEGATE("cosmetic.instantmirror")
 
         void toggleFlipped(bool p0, bool p1) {
             GJBaseGameLayer::toggleFlipped(p0, true);

@@ -4,13 +4,13 @@
 
 #include <Geode/modify/GJBaseGameLayer.hpp>
 
-namespace eclipse::hacks::Level {
+namespace eclipse::hacks::Cosmetic {
 
     class PracticeCoins : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Level");
+            auto tab = gui::MenuTab::find("Cosmetic");
 
-            tab->addToggle("Practice Coins", "level.practicecoins")
+            tab->addToggle("Practice Coins", "cosmetic.practicecoins")
                 ->setDescription("Allows you to collect coins in practice mode.")
                 ->handleKeybinds();
         }
@@ -21,7 +21,7 @@ namespace eclipse::hacks::Level {
     REGISTER_HACK(PracticeCoins)
 
     class $modify(PracticeCoinsBGLHook, GJBaseGameLayer) {
-        ADD_HOOKS_DELEGATE("level.practicecoins")
+        ADD_HOOKS_DELEGATE("cosmetic.practicecoins")
 
         void collisionCheckObjects(PlayerObject* player, gd::vector<GameObject*>* sectionObjects, int objectCount, float dt) {
             if (!m_isPracticeMode)

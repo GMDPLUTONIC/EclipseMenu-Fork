@@ -8,12 +8,12 @@
 
 using namespace geode::prelude;
 
-namespace eclipse::hacks::Player {
+namespace eclipse::hacks::Cosmetic {
 
     class SolidWaveTrail : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Player");
-            tab->addToggle("Solid Wave Trail", "player.solidwavetrail")
+            auto tab = gui::MenuTab::find("Cosmetic");
+            tab->addToggle("Solid Wave Trail", "cosmetic.solidwavetrail")
                 ->setDescription("Makes the player wave trail a solid color")
                 ->handleKeybinds();
         }
@@ -24,7 +24,7 @@ namespace eclipse::hacks::Player {
    REGISTER_HACK(SolidWaveTrail)
 
     class $modify(SolidWaveTrailCCDNHook, cocos2d::CCDrawNode) {
-        ALL_DELEGATES_AND_SAFE_PRIO("player.solidwavetrail")
+        ALL_DELEGATES_AND_SAFE_PRIO("cosmetic.solidwavetrail")
 
         bool drawPolygon(cocos2d::CCPoint *p0, unsigned int p1, const cocos2d::ccColor4F &p2, float p3, const cocos2d::ccColor4F &p4) {
             if (p2.r == 1.F && p2.g == 1.F && p2.b == 1.F && p2.a != 1.F) return true; 

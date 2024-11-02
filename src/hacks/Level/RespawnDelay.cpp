@@ -5,16 +5,16 @@
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/CCDelayTime.hpp>
 
-namespace eclipse::hacks::Player {
+namespace eclipse::hacks::Level {
 
     class RespawnDelay : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Player");
+            auto tab = gui::MenuTab::find("Level");
 
-            config::setIfEmpty("player.respawndelay.toggle", false);
-            config::setIfEmpty("player.respawndelay", 1.f);
+            config::setIfEmpty("level.respawndelay.toggle", false);
+            config::setIfEmpty("level.respawndelay", 1.f);
 
-            tab->addFloatToggle("Respawn Delay", "player.respawndelay", 0.f, 120.f, "%.2f s.")
+            tab->addFloatToggle("Respawn Delay", "level.respawndelay", 0.f, 120.f, "%.2f s.")
                ->handleKeybinds();
         }
 
@@ -25,12 +25,12 @@ namespace eclipse::hacks::Player {
     REGISTER_HACK(RespawnDelay)
 
     class $modify(RespawnDelayPLHook, PlayLayer) {
-        ALL_DELEGATES_AND_SAFE_PRIO("player.respawndelay.toggle")
+        ALL_DELEGATES_AND_SAFE_PRIO("level.respawndelay.toggle")
 
         void destroyPlayer(PlayerObject* player, GameObject* object) override {
             PlayLayer::destroyPlayer(player, object);
 
-            auto delay = config::get<float>("player.respawndelay", 1.f);
+            auto delay = config::get<float>("level.respawndelay", 1.f);
             if (auto* respawnSequence = this->getActionByTag(0x10)) {
                 // Recreate the sequence with the new delay
                 this->stopAction(respawnSequence);

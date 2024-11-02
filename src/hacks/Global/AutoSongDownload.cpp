@@ -8,9 +8,9 @@ namespace eclipse::hacks::Level {
 
     class AutoSongDownload : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Level");
+            auto tab = gui::MenuTab::find("Global");
 
-            tab->addToggle("Auto Song Download", "level.autosongdownload")
+            tab->addToggle("Auto Song Download", "global.autosongdownload")
                 ->handleKeybinds()
                 ->setDescription("Auto-download song and SFX files when viewing an online level. (Created by Uproxide)");
         }
@@ -21,7 +21,7 @@ namespace eclipse::hacks::Level {
     REGISTER_HACK(AutoSongDownload)
 
     class $modify(AutoSongDownloadLILHook, LevelInfoLayer) {
-        ADD_HOOKS_DELEGATE("level.autosongdownload")
+        ADD_HOOKS_DELEGATE("global.autosongdownload")
 
         void levelDownloadFinished(GJGameLevel* level) override {
             LevelInfoLayer::levelDownloadFinished(level);
