@@ -4,13 +4,13 @@
 
 #include <Geode/modify/PlayLayer.hpp>
 
-namespace eclipse::hacks::Cosmetic {
+namespace eclipse::hacks::Level {
 
     class NoGlow : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Cosmetic");
+            auto tab = gui::MenuTab::find("Level");
 
-            tab->addToggle("No Object Glow", "cosmetic.noglow")
+            tab->addToggle("No Object Glow", "level.noglow")
                 ->handleKeybinds()
                 ->setDescription("Disables all glow coming from objects");
         }
@@ -21,7 +21,7 @@ namespace eclipse::hacks::Cosmetic {
     REGISTER_HACK(NoGlow)
 
     class $modify(NoGlowPLHook, PlayLayer) {
-        ADD_HOOKS_DELEGATE("cosmetic.noglow")
+        ADD_HOOKS_DELEGATE("level.noglow")
 
         void addObject(GameObject* obj) {
             obj->m_hasNoGlow = true;

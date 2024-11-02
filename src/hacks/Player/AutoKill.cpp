@@ -5,24 +5,24 @@
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
 
-namespace eclipse::hacks::Level {
+namespace eclipse::hacks::Player {
 
     class AutoKill : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Level");
+            auto tab = gui::MenuTab::find("Player");
 
-            config::setIfEmpty("level.autokill.percentage.toggle", true);
-            config::setIfEmpty("level.autokill.percentage", 50.0f);
-            config::setIfEmpty("level.autokill.time", 90.0f);
+            config::setIfEmpty("player.autokill.percentage.toggle", true);
+            config::setIfEmpty("player.autokill.percentage", 50.0f);
+            config::setIfEmpty("player.autokill.time", 90.0f);
 
-            tab->addToggle("Auto Kill", "level.autokill")
+            tab->addToggle("Auto Kill", "player.autokill")
                 ->handleKeybinds()
                 ->setDescription("Kills the player at a certain time or percentage.")
                 ->addOptions([](std::shared_ptr<gui::MenuTab> options) {
-                    options->addFloatToggle("Kill at Percentage", "level.autokill.percentage", 0.f, 100.f, "%.2f%%")
+                    options->addFloatToggle("Kill at Percentage", "player.autokill.percentage", 0.f, 100.f, "%.2f%%")
                         ->handleKeybinds()
                         ->setDescription("Kills the player at a certain percentage.");
-                    options->addFloatToggle("Kill at Time", "level.autokill.time", 0.f, FLT_MAX, "%.2f s.")
+                    options->addFloatToggle("Kill at Time", "player.autokill.time", 0.f, FLT_MAX, "%.2f s.")
                         ->handleKeybinds()
                         ->setDescription("Kills the player at a certain time.");
                 });
@@ -34,17 +34,17 @@ namespace eclipse::hacks::Level {
     REGISTER_HACK(AutoKill)
 
     class $modify(AutoKillBGLHook, GJBaseGameLayer) {
-        ADD_HOOKS_DELEGATE("level.autokill")
+        ADD_HOOKS_DELEGATE("player.autokill")
 
         void killPlayer() {
             auto* playLayer = PlayLayer::get();
             if (!playLayer) return;
 
-            bool noclipEnabled = config::get<bool>("level.noclip", false);
-            config::set("level.noclip", false);
+            bool noclipEnabled = config::get<bool>("player.noclip", false);
+            config::set("player.noclip", false);
             if (m_player1 && !m_player1->m_isDead)
                 playLayer->PlayLayer::destroyPlayer(m_player1, m_player1);
-            config::set("level.noclip", noclipEnabled);
+            config::set("player.noclip", noclipEnabled);
         }
 
         void update(float p0) override {
@@ -53,10 +53,10 @@ namespace eclipse::hacks::Level {
             auto* playLayer = PlayLayer::get();
             if (!playLayer) return;
 
-            auto percentageEnabled = config::get<bool>("level.autokill.percentage.toggle", true);
-            auto percentage = config::get<float>("level.autokill.percentage", 50.0f);
-            auto timeEnabled = config::get<bool>("level.autokill.time.toggle", false);
-            auto time = config::get<float>("level.autokill.time", 90.0f);
+            auto percentageEnabled = config::get<bool>("player.autokill.percentage.toggle", true);
+            auto percentage = config::get<float>("player.autokill.percentage", 50.0f);
+            auto timeEnabled = config::get<bool>("player.autokill.time.toggle", false);
+            auto time = config::get<float>("player.autokill.time", 90.0f);
 
             bool shouldKill = false;
             shouldKill |= percentageEnabled && playLayer->getCurrentPercent() >= percentage;

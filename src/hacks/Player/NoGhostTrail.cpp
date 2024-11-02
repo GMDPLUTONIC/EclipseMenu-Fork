@@ -4,13 +4,13 @@
 
 #include <Geode/modify/PlayerObject.hpp>
 
-namespace eclipse::hacks::Cosmetic {
+namespace eclipse::hacks::Player {
 
     class NoGhostTrail : public hack::Hack {
         void init() override {
-            auto tab = gui::MenuTab::find("Cosmetic");
+            auto tab = gui::MenuTab::find("Player");
 
-            tab->addToggle("No Ghost Trail", "Cosmetic.noghosttrail")
+            tab->addToggle("No Ghost Trail", "player.noghosttrail")
                 ->setDescription("Disables player ghost trail triggers.")
                 ->handleKeybinds();
         }
@@ -21,7 +21,7 @@ namespace eclipse::hacks::Cosmetic {
     REGISTER_HACK(NoGhostTrail)
 
     class $modify(NoGhostTrailPOHook, PlayerObject) {
-        ADD_HOOKS_DELEGATE("cosmetic.noghosttrail")
+        ADD_HOOKS_DELEGATE("player.noghosttrail")
 
         void toggleGhostEffect(GhostType) {
             PlayerObject::toggleGhostEffect(GhostType::Disabled);

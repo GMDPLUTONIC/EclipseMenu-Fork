@@ -4,16 +4,16 @@
 
 #include <Geode/modify/GJBaseGameLayer.hpp>
 
-namespace eclipse::hacks::Cosmetic {
+namespace eclipse::hacks::Level {
 
     void onHideParticles(bool state) {
         if (!state) return;
 
-        bool customParticlesEnabled = !config::get<bool>("cosmetic.noparticles.nocustomparticles", false);
-        bool miscParticlesEnabled = !config::get<bool>("cosmetic.noparticles.nomiscparticles", false);
+        bool customParticlesEnabled = !config::get<bool>("level.noparticles.nocustomparticles", false);
+        bool miscParticlesEnabled = !config::get<bool>("level.noparticles.nomiscparticles", false);
 
         if (customParticlesEnabled && miscParticlesEnabled)
-            config::set("cosmetic.noparticles", false);
+            config::set("level.noparticles", false);
 
         auto* gjbgl = GJBaseGameLayer::get();
 
@@ -46,24 +46,24 @@ namespace eclipse::hacks::Cosmetic {
         void init() override {
             auto tab = gui::MenuTab::find("Level");
 
-            config::setIfEmpty("cosmetic.noparticles", false);
-            config::setIfEmpty("cosmetic.noparticles.nomiscparticles", true);
-            config::setIfEmpty("cosmetic.noparticles.nocustomparticles", false);
+            config::setIfEmpty("level.noparticles", false);
+            config::setIfEmpty("level.noparticles.nomiscparticles", true);
+            config::setIfEmpty("level.noparticles.nocustomparticles", false);
 
-            tab->addToggle("No Particles", "cosmetic.noparticles")
+            tab->addToggle("No Particles", "level.noparticles")
                 ->handleKeybinds()
                 ->setDescription("Hides portal, coin, custom, etc particles in levels.")
                 ->callback(onHideParticles)
                 ->addOptions([](std::shared_ptr<gui::MenuTab> options) {
-                    options->addToggle("No Misc. Particles", "cosmetic.noparticles.nomiscparticles")
+                    options->addToggle("No Misc. Particles", "level.noparticles.nomiscparticles")
                         ->setDescription("Includes portal, dash orb, coin, end wall particles, etc...");
-                    options->addToggle("No Custom Particles", "cosmetic.noparticles.nocustomparticles")
+                    options->addToggle("No Custom Particles", "level.noparticles.nocustomparticles")
                         ->setDescription("Includes particles created by the level author.");
                 });
         }
 
         void update() override {
-            onHideParticles(config::get<bool>("cosmetic.noparticles", false));
+            onHideParticles(config::get<bool>("level.noparticles", false));
         }
 
         [[nodiscard]] const char* getId() const override { return "No Particles"; }
@@ -75,7 +75,7 @@ namespace eclipse::hacks::Cosmetic {
         ENABLE_SAFE_HOOKS_ALL()
 
         cocos2d::CCParticleSystemQuad* spawnParticle(char const* plist, int zOrder, cocos2d::tCCPositionType positionType, cocos2d::CCPoint position) {
-            if (config::get<bool>("cosmetic.noparticles", false) && config::get<bool>("cosmetic.noparticles.nomiscparticles", false))
+            if (config::get<bool>("level.noparticles", false) && config::get<bool>("level.noparticles.nomiscparticles", false))
                 return nullptr;
 
             return GJBaseGameLayer::spawnParticle(plist, zOrder, positionType, position);

@@ -126,4 +126,3 @@ namespace eclipse::Hacks::Level {
     };
 
 }
-}
