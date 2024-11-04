@@ -350,13 +350,20 @@ This list will be split into categories, each having a separate table.
 
 ### Hacks
 
-| Name             | Description                                   | Type    |
-|------------------|-----------------------------------------------|---------|
-| `isCheating`     | Has the current state of the cheat indicator. | Boolean |
-| `noclip`         | Check whether noclip is enabled.              | Boolean |
-| `speedhack`      | Check whether speedhack is enabled.           | Boolean |
-| `speedhackSpeed` | Selected speedhack speed.                     | Float   |
-| `framestepper`   | Check whether frame stepper is active.        | Boolean |
+| Name             | Description                                      | Type    |
+|------------------|--------------------------------------------------|---------|
+| `isCheating`     | Has the current state of the cheat indicator.    | Boolean |
+| `noclip`         | Check whether noclip is enabled.                 | Boolean |
+| `speedhack`      | Check whether speedhack is enabled.              | Boolean |
+| `speedhackSpeed` | Selected speedhack speed.                        | Float   |
+| `framestepper`   | Check whether frame stepper is active.           | Boolean |
+| `autoclick`      | Detects wheter autoclicker is enabled.           | Boolean |
+| `showTrajectory` | Detects whether show trajectory is active.       | Boolean |
+| `jumphack`       | Detects whether jump hack is enabled.            | Boolean |
+| `botDisabled`    | Detects whether the replay bot is disabled.      | Boolean |
+| `recordingMacro` | Detects whether the player is recording a macro. | Boolean |
+| `replayingMacro` | Detects whether the player is replaying a macro. | Boolean |
+| `clickTP`        | Detects whether the player enabled click tp.     | Boolean |
 
 ### Level information
 > Note: these values are only available when playing/editing the level
