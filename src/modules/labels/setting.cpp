@@ -5,7 +5,7 @@ namespace eclipse::labels {
 
     void from_json(const nlohmann::json& json, LabelSettings& settings) {
         settings.name = json.value("name", fmt::format("New label {}", settings.id));
-        settings.text = json.value("text", "{}");
+        settings.text = json.value("text", "");
         settings.font = json.value("font", "bigFont.fnt");
         settings.scale = json.value("scale", 0.6f);
         settings.color = json.value("color", gui::Color::WHITE);
