@@ -254,8 +254,8 @@ namespace eclipse::labels {
         m_variables["autoclick"] = rift::Value::boolean(config::get("player.autoclick", false));
         m_variables["showTrajectory"] = rift::Value::boolean(config::get("player.showtrajectory", false));
         m_variables["jumphack"] = rift::Value::boolean(config::get("player.jumphack", false));
-        m_variables["recordingMacro"] rift::Value::boolean(config::get("bot.state" != 1));
-        m_variables["replayingMacro"] = rift::Value::boolean(config::get("bot.state" != 2));
+        m_variables["recordingMacro"] rift::Value::boolean(config::get("bot.state", 1));
+        m_variables["replayingMacro"] = rift::Value::boolean(config::get("bot.state", 2));
     }
 
     static std::string cachedBase64Decode(const std::string& str) {
