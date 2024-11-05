@@ -35,6 +35,7 @@ namespace eclipse::gui::imgui {
         MegaHack, /// MegaHack v8 style
         MegaOverlay, /// GDMegaOverlay style
         Modern, /// Modern Theme From Openhack
+        Gruvbox, /// Gruvbox Theme From Openhack
     };
 
     class Theme {

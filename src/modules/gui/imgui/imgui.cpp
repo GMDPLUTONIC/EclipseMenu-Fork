@@ -9,6 +9,7 @@
 #include "components/megahack/megahack.hpp"
 #include "components/megaoverlay/megaoverlay.hpp"
 #include "components/modern/modern.hpp"
+#include "components/gruvbox/gruvbox.hpp"
 #include "layouts/tabbed.hpp"
 #include "layouts/panel.hpp"
 #include "layouts/sidebar.hpp"
