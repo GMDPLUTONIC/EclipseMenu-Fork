@@ -63,7 +63,7 @@
 		"reset-theme": {
 			"type": "custom:custom-btn",
 			"name": "Reset theme?",
-			"description": "Reset the theme to the default one.",
+			"description": "Resets the theme to the default one.",
 			"default": "Reset"
 		}
 	}

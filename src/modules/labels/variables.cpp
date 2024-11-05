@@ -258,6 +258,7 @@ namespace eclipse::labels {
         m_variables["recordingMacro"] = rift::Value::boolean(config::get("bot.state", 1));
         m_variables["replayingMacro"] = rift::Value::boolean(config::get("bot.state", 2));
         m_variables["clickTP"] = rift::Value::boolean(config::get("player.clicktp", false));
+        m_variables["respawnDelay"] = rift::Value::boolean(config::get("player.respawndelay.toggle", false));
     }
 
     static std::string cachedBase64Decode(const std::string& str) {
