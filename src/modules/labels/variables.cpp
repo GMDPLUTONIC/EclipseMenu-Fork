@@ -253,7 +253,7 @@ namespace eclipse::labels {
         m_variables["framestepper"] = rift::Value::boolean(config::get("player.framestepper", false));
         m_variables["autoclick"] = rift::Value::boolean(config::get("player.autoclick", false));
         m_variables["showTrajectory"] = rift::Value::boolean(config::get("player.showtrajectory", false));
-        m_variables["jumphack"] = rift::Value::boolean(config::get("player.jumphack", false));
+        m_variables["jumpHack"] = rift::Value::boolean(config::get("player.jumphack", false));
         m_variables["botDisabled"] = rift::Value::boolean(config::get("bot.state", 0));
         m_variables["recordingMacro"] = rift::Value::boolean(config::get("bot.state", 1));
         m_variables["replayingMacro"] = rift::Value::boolean(config::get("bot.state", 2));

@@ -359,7 +359,7 @@ This list will be split into categories, each having a separate table.
 | `framestepper`   | Check whether frame stepper is active.           | Boolean |
 | `autoclick`      | Detects wheter autoclicker is enabled.           | Boolean |
 | `showTrajectory` | Detects whether show trajectory is active.       | Boolean |
-| `jumphack`       | Detects whether jump hack is enabled.            | Boolean |
+| `jumpHack`       | Detects whether jump hack is enabled.            | Boolean |
 | `botDisabled`    | Detects whether the replay bot is disabled.      | Boolean |
 | `recordingMacro` | Detects whether the player is recording a macro. | Boolean |
 | `replayingMacro` | Detects whether the player is replaying a macro. | Boolean |
