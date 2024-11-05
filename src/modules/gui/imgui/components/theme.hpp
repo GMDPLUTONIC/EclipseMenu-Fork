@@ -34,6 +34,7 @@ namespace eclipse::gui::imgui {
         ImGui, /// Classic Dear ImGui look
         MegaHack, /// MegaHack v8 style
         MegaOverlay, /// GDMegaOverlay style
+        Modern, /// Modern Theme From Openhack
     };
 
     class Theme {

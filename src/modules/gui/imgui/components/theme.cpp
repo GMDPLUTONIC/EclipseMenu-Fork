@@ -10,7 +10,7 @@
 namespace eclipse::gui::imgui {
 
     std::vector<std::string> THEME_NAMES = {
-        "ImGui", "MegaHack", "MegaOverlay"
+        "ImGui", "MegaHack", "MegaOverlay", "Modern"
     };
 
     void Theme::visit(const std::shared_ptr<Component>& component) const {

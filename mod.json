@@ -65,12 +65,6 @@
 			"name": "Reset theme?",
 			"description": "Reset the theme to the default one.",
 			"default": "Reset"
-		},
-		"delete-labels": {
-			"type": "custom:custom-btn",
-			"name": "Delete Labels",
-			"description": "Deletes all of your labels",
-			"default": "Reset"
 		}
 	}
 }
