@@ -27,7 +27,7 @@ namespace eclipse::gui {
     }
     #endif
 
-        ##ifdef GEODE_IS_DESKTOP
+        ##ifdef GEODE_IS_MOBILE
     int getDefaultThemeIndex(std::vector<ThemeMeta> const& themes) {
         static auto defaultPath = geode::Mod::get()->getResourcesDir() / "gruvbox.json";
         for (auto i = 0; i < themes.size(); i++) {
