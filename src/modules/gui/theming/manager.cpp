@@ -17,7 +17,6 @@ namespace eclipse::gui {
         }
     };
 
-    ##ifdef GEODE_IS_DESKTOP
     int getDefaultThemeIndex(std::vector<ThemeMeta> const& themes) {
         static auto defaultPath = geode::Mod::get()->getResourcesDir() / "megaoverlay.json";
         for (auto i = 0; i < themes.size(); i++) {
@@ -25,17 +24,6 @@ namespace eclipse::gui {
         }
         return 0;
     }
-    #endif
-
-        ##ifdef GEODE_IS_MOBILE
-    int getDefaultThemeIndex(std::vector<ThemeMeta> const& themes) {
-        static auto defaultPath = geode::Mod::get()->getResourcesDir() / "gruvbox.json";
-        for (auto i = 0; i < themes.size(); i++) {
-            if (themes[i].path == defaultPath) return i;
-        }
-        return 0;
-    }
-    #endif
 
     void ThemeManager::init() {
         if (!loadTheme(geode::Mod::get()->getSaveDir() / "theme.json")) {

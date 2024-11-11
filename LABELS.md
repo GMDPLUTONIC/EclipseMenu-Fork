@@ -311,9 +311,9 @@ This list will be split into categories, each having a separate table.
 
 | Name          | Description                             | Type    | Remarks                     |
 |---------------|-----------------------------------------|---------|-----------------------------|
-| `modVersion`  | Current Eclipse Menu version.           | String  | `v.1.0.0-alpha.1`           |
+| `modVersion`  | Current Eclipse Menu version.           | String  | `v.1.0.0-beta.3`           |
 | `platform`    | Platform you're currently running on.   | String  | `Windows`/`macOS`/`Android` |
-| `gameVersion` | Current Geometry Dash version.          | String  | `2.206`                     |
+| `gameVersion` | Current Geometry Dash version.          | String  | `2.2073`                     |
 | `totalMods`   | Total count of Geode mods installed.     | Integer |                             |
 | `enabledMods` | Count of only enabled mods.             | Integer |                             |
 | `fps`         | Current average FPS.                    | Float   |                             |
