@@ -69,8 +69,8 @@ namespace eclipse::gui::cocos {
                         row->addChild(ToggleComponentNode::create(component, size.width / 2));
                         row->addChild(ToggleComponentNode::create(*component2, size.width / 2));
                         row->setLayout(
-                            cocos2d::RowLayout::create()
-                                ->setAxisAlignment(cocos2d::AxisAlignment::End)
+                            geode::RowLayout::create()
+                                ->setAxisAlignment(geode::AxisAlignment::End)
                                 ->setGap(0)
                         );
                         layer->addChild(row);
@@ -92,9 +92,9 @@ namespace eclipse::gui::cocos {
                     }
                     menu->setContentHeight(count * 30.5f);
                     menu->setLayout(
-                        cocos2d::ColumnLayout::create()
+                        geode::ColumnLayout::create()
                             ->setAxisReverse(true)
-                            ->setAxisAlignment(cocos2d::AxisAlignment::End)
+                            ->setAxisAlignment(geode::AxisAlignment::End)
                             ->setGap(2.5f)
                     );
                     layer->addChild(menu);
@@ -107,10 +107,10 @@ namespace eclipse::gui::cocos {
         }
 
         layer->setLayout(
-            cocos2d::ColumnLayout::create()
+            geode::ColumnLayout::create()
                 ->setAxisReverse(true)
                 ->setAutoGrowAxis(this->getContentHeight())
-                ->setAxisAlignment(cocos2d::AxisAlignment::End)
+                ->setAxisAlignment(geode::AxisAlignment::End)
                 ->setGap(0)
         );
         m_contentLayer->fixTouchPrio();

@@ -1,4 +1,4 @@
-#include <Geode/loader/SettingEvent.hpp>
+#include <Geode/loader/Setting.hpp>
 #include <Geode/modify/MenuLayer.hpp>
 #include <Geode/modify/UILayer.hpp>
 #include <Geode/modify/CCScheduler.hpp>
@@ -9,13 +9,14 @@
 #include <modules/gui/blur/blur.hpp>
 #include <modules/gui/float-button.hpp>
 #include <modules/gui/theming/manager.hpp>
+#include <modules/debug/trace.hpp>
 #include <imgui-cocos.hpp>
 
 using namespace eclipse;
 
 static bool s_isInitialized = false;
 
-static void toggleMenu() {
+static void toggleMenu(bool down = true) {
     gui::Engine::get()->toggle();
     config::save();
     gui::ThemeManager::get()->saveTheme();
@@ -37,6 +38,7 @@ class $modify(EclipseButtonMLHook, MenuLayer) {
         }
 
         if (s_isInitialized) return true;
+        TRACE_FUNCTION();
 
         geode::log::info("Eclipse Menu commit hash: {}", GIT_HASH);
 
@@ -48,13 +50,13 @@ class $modify(EclipseButtonMLHook, MenuLayer) {
 
         #ifdef GEODE_IS_MOBILE
         // This will create the floating button and keep it across scenes
-        gui::FloatingButton::get()->setCallback(toggleMenu);
+        gui::FloatingButton::get()->setCallback([]{ toggleMenu(); });
         #endif
 
         // Register the keybind
         auto& key = keybinds::Manager::get()->registerKeybind("menu.toggle", "Toggle UI", toggleMenu);
         config::setIfEmpty("menu.toggleKey", keybinds::Keys::Tab);
-        key.setKey(config::get<keybinds::Keys>("menu.toggleKey"));
+        key.setKey(config::get<keybinds::Keys>("menu.toggleKey", keybinds::Keys::Tab));
         key.setInitialized(true);
         hack::Hack::lateInitializeHacks();
 
@@ -111,6 +113,7 @@ public:
 };
 
 $on_mod(Loaded) {
+    TRACE_SCOPE("$on_mod(Loaded)");
     // Allow user to change disable VBO (resolves issues on older hardware)
     auto* mod = geode::Mod::get();
     ImGuiCocos::get().setForceLegacy(mod->getSettingValue<bool>("legacy-render"));
@@ -141,7 +144,7 @@ $on_mod(Loaded) {
             auto themeCombo = tab->addCombo("Theme", "themeIndex", themeNames, 0);
             themeCombo->callback([](int value) {
                 ThemeManager::get()->loadTheme(ThemeManager::get()->listAvailableThemes()[value].path);
-                ThemeManager::get()->setUIScale(config::getTemp<float>("uiScale"));
+                ThemeManager::get()->setUIScale(config::getTemp<float>("uiScale", 1.f));
             });
         }
         tab->addInputFloat("UI Scale", "uiScale", 0.75f, 2.f, "x%.3f")

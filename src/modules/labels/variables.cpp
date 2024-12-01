@@ -9,7 +9,9 @@
 #include <Geode/binding/PlayLayer.hpp>
 #include <Geode/loader/Mod.hpp>
 #include <Geode/Loader.hpp>
+
 #include <Geode/modify/PlayLayer.hpp>
+#include <Geode/modify/GJBaseGameLayer.hpp>
 
 #include <rift/config.hpp>
 
@@ -23,13 +25,13 @@ namespace eclipse::labels {
             return rift::Value::null();
         switch (config::getType(key)) {
             case nlohmann::detail::value_t::string:
-                return rift::Value::string(config::get<std::string>(key));
+                return rift::Value::string(config::get<std::string>(key).unwrap());
             case nlohmann::detail::value_t::boolean:
-                return rift::Value::boolean(config::get<bool>(key));
+                return rift::Value::boolean(config::get<bool>(key).unwrap());
             case nlohmann::detail::value_t::number_integer:
-                return rift::Value::integer(config::get<int>(key));
+                return rift::Value::integer(config::get<int>(key).unwrap());
             case nlohmann::detail::value_t::number_float:
-                return rift::Value::floating(config::get<float>(key));
+                return rift::Value::floating(config::get<float>(key).unwrap());
             default:
                 return rift::Value::null();
         }
@@ -91,6 +93,7 @@ namespace eclipse::labels {
         // Fetch everything else
         m_variables["fps"] = rift::Value::floating(0.f);
         m_variables["realFps"] = rift::Value::floating(0.f);
+        m_variables["tps"] = rift::Value::floating(0.f);
         refetch();
     }
 
@@ -261,7 +264,7 @@ namespace eclipse::labels {
         m_variables["respawnDelay"] = rift::Value::boolean(config::get("player.respawndelay.toggle", false));
     }
 
-    static std::string cachedBase64Decode(const std::string& str) {
+    static std::string const& cachedBase64Decode(const std::string& str) {
         static std::string s_lastStr;
         static std::string s_lastDecoded;
         if (str == s_lastStr) return s_lastDecoded;
@@ -362,7 +365,8 @@ namespace eclipse::labels {
         m_variables["levelLength"] = rift::Value::floating(gameLayer->m_levelLength);
         m_variables["levelDuration"] = rift::Value::floating(gameLayer->m_level->m_timestamp / 240.f);
         m_variables["time"] = rift::Value::string(utils::formatTime(gameLayer->m_gameState.m_levelTime));
-        m_variables["frame"] = rift::Value::integer(gameLayer->m_gameState.m_levelTime * 240.0);
+        m_variables["frame"] = rift::Value::integer(gameLayer->m_gameState.m_currentProgress);
+        m_variables["frameReal"] = rift::Value::integer(gameLayer->m_gameState.m_levelTime * utils::getTPS());
         m_variables["isDead"] = rift::Value::boolean(gameLayer->m_player1->m_isDead);
         m_variables["isDualMode"] = rift::Value::boolean(gameLayer->m_player2 != nullptr && gameLayer->m_player2->isRunning()); // can m_isDualMode be added already
         m_variables["noclipDeaths"] = rift::Value::integer(config::getTemp("noclipDeaths", 0));
@@ -397,6 +401,25 @@ namespace eclipse::labels {
         // Game state
         fetchGameplayData(GJBaseGameLayer::get());
     }
+
+    class $modify(LabelsGJBGLHook, GJBaseGameLayer) {
+        void processCommands(float dt) {
+            GJBaseGameLayer::processCommands(dt);
+
+            static time_t s_lastUpdate = utils::getTimestamp();
+            static size_t s_frames = 0;
+            s_frames++;
+            auto now = utils::getTimestamp();
+            auto diff = now - s_lastUpdate;
+            constexpr time_t interval = 250;
+            if (diff >= interval) {
+                auto tps = s_frames / (diff / 1000.0);
+                VariableManager::get().setVariable("tps", rift::Value::floating(tps));
+                s_lastUpdate = now;
+                s_frames = 0;
+            }
+        }
+    };
 
     class $modify(BestRunPLHook, PlayLayer) {
         struct Fields {
