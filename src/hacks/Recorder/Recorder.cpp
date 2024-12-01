@@ -8,6 +8,8 @@
 #include <Geode/modify/ShaderLayer.hpp>
 #include <Geode/modify/CCScheduler.hpp>
 
+#include <regex>
+
 // android uses custom gd::string class
 #ifdef GEODE_IS_ANDROID
 #define STR(x) std::string(x)
@@ -77,9 +79,13 @@ namespace eclipse::hacks::Recorder {
         lastFrameTime = 0.;
         afterEndTimer = 0.f;
 
-        auto lvl = PlayLayer::get()->m_level;
+        GJGameLevel* lvl = PlayLayer::get()->m_level;
 
-        std::filesystem::path renderDirectory = geode::Mod::get()->getSaveDir() / "renders" / STR(lvl->m_levelName);
+        std::string trimmedLevelName = lvl->m_levelName;
+        trimmedLevelName.erase(std::remove(trimmedLevelName.begin(), trimmedLevelName.end(), '/'), trimmedLevelName.end());
+        trimmedLevelName.erase(std::remove(trimmedLevelName.begin(), trimmedLevelName.end(), '\\'), trimmedLevelName.end());
+        trimmedLevelName = std::regex_replace(trimmedLevelName, std::regex("\\s+"), " ");
+        std::filesystem::path renderDirectory = geode::Mod::get()->getSaveDir() / "renders" / STR(trimmedLevelName);
 
         if (!std::filesystem::exists(renderDirectory))
             std::filesystem::create_directories(renderDirectory);
@@ -89,7 +95,7 @@ namespace eclipse::hacks::Recorder {
         s_recorder.m_renderSettings.m_width = config::get<int>("recorder.resolution.x", 1920);
         s_recorder.m_renderSettings.m_height = config::get<int>("recorder.resolution.y", 1080);
         s_recorder.m_renderSettings.m_codec = config::get<std::string>("recorder.codecString", "h264");
-        s_recorder.m_renderSettings.m_outputFile = renderDirectory / (fmt::format("{} - {}.mp4", lvl->m_levelName, lvl->m_levelID.value()));
+        s_recorder.m_renderSettings.m_outputFile = renderDirectory / (fmt::format("{} - {}.mp4", trimmedLevelName, lvl->m_levelID.value()));
         s_recorder.m_renderSettings.m_hardwareAccelerationType = static_cast<ffmpeg::HardwareAccelerationType>(config::get<int>("recorder.hwType", 0));
         s_recorder.m_renderSettings.m_colorspaceFilters = config::get<std::string>("recorder.colorspace", "");
 
@@ -115,8 +121,14 @@ namespace eclipse::hacks::Recorder {
     void startAudio() {
         stop();
 
+        FMODAudioEngine::get()->stopAllEffects();
+
         auto lvl = PlayLayer::get()->m_level;
-        auto renderPath = geode::Mod::get()->getSaveDir() / "renders" / STR(lvl->m_levelName) / (fmt::format("{} - {}.mp4", lvl->m_levelName, lvl->m_levelID.value()));
+        std::string trimmedLevelName = lvl->m_levelName;
+        trimmedLevelName.erase(std::remove(trimmedLevelName.begin(), trimmedLevelName.end(), '/'), trimmedLevelName.end());
+        trimmedLevelName.erase(std::remove(trimmedLevelName.begin(), trimmedLevelName.end(), '\\'), trimmedLevelName.end());
+        trimmedLevelName = std::regex_replace(trimmedLevelName, std::regex("\\s+"), " ");
+        auto renderPath = geode::Mod::get()->getSaveDir() / "renders" / STR(trimmedLevelName) / (fmt::format("{} - {}.mp4", trimmedLevelName, lvl->m_levelID.value()));
 
         if (!std::filesystem::exists(renderPath)) {
             geode::log::error("Render {} not found", renderPath);
@@ -127,8 +139,8 @@ namespace eclipse::hacks::Recorder {
         popupShown = false;
         afterEndTimer = 0.f;
 
-        if (PlayLayer::get()->getChildByID("EndLevelLayer"))
-            PlayLayer::get()->getChildByID("EndLevelLayer")->removeFromParent();
+        if (auto ell = PlayLayer::get()->getChildByType<EndLevelLayer>(0))
+            ell->removeFromParent();
 
         PlayLayer::get()->stopAllActions();
         PlayLayer::get()->startGame();
@@ -273,7 +285,7 @@ namespace eclipse::hacks::Recorder {
                     if (channelTime <= 0)
                         continue;
 
-                    if (channelTime - songTime > 0.05f)
+                    if (channelTime - songTime > 0.25f || channelTime - songTime < -0.25f)
                         audioChannel->setPosition(songTime, FMOD_TIMEUNIT_MS);
                 }
             }

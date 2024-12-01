@@ -1,12 +1,16 @@
 {
+<<<<<<< HEAD
 	"geode": "3.9.0",
+=======
+	"geode": "4.0.1",
+>>>>>>> 7cac25b68cbb9f90db1d268cd93a5202206743d4
 	"gd": {
 		"win": "2.2074",
 		"mac": "2.2074",
 		"android": "2.2074",
 		"ios": "2.2074"
 	},
-	"version": "v1.0.0-beta.3",
+	"version": "v1.0.0-beta.4",
 	"id": "eclipse.eclipse-menu",
 	"name": "Eclipse",
 	"links": {
@@ -14,7 +18,7 @@
         "community": "https://discord.gg/NnpwFRDMND"
 	},
 	"api": { "include": [ "include/*.hpp" ] },
-	"tags": ["cheats", "gameplay", "utility", "customization", "interface"],
+	"tags": ["cheat", "gameplay", "utility", "customization", "interface"],
 	"developers": ["Eclipse Team", "ninXout", "Prevter", "maxnu", "Firee", "SpaghettDev"],
 	"description": "A next-generation mod menu for Geometry Dash.",
 	"early-load": true,
@@ -49,7 +53,7 @@
 	"dependencies": [
         {
             "id": "eclipse.ffmpeg-api",
-            "version": ">=1.0.0",
+            "version": ">=1.1.2",
             "importance": "required"
         }
 	],

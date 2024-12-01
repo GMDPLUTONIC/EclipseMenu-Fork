@@ -1,7 +1,8 @@
 # Eclipse Menu
 
-## v1.0.0-beta.4 (???)
-**<cg>Geometry Dash v2.2074</c> support**
+## v1.0.0-beta.4
+**<cg>Geometry Dash v2.2074</c> support**  
+No Android support yet, but we're working on it!
 
 **Fixes:**
 * <cg>Fixed</c> radio buttons keybinds always setting the first option
@@ -15,7 +16,10 @@
 * <cg>Fixed</c> keybind deletion crash
 * <cg>Fixed</c> random crashes with <co>All Modes in Platformer</c>, <co>Practice Coins</c> and <co>Show Trajectory</c>
 * <cg>Fixed</c> <co>Frame Stepper</c> bugging out with <co>Speedhack</c>
+* <cg>Fixed</c> an issue with slashes in level name when saving a render
 * <co>StartPos Switcher</c> keybinds now trigger instantly
+* <co>Practice Music Sync</c> now auto-toggles the option in settings
+* Replay does not trigger <co>Auto Safe Mode</c> unless you have a loaded macro
 * Added some mod descriptions (#19, #70)
 
 **Additions**:
@@ -25,18 +29,23 @@
 * Added <cg>Discord RPC</c>
 * Added <cg>Show In Editor</c> option to <co>Show Hitboxes</c>
 * Replaced <co>TPS Bypass</c> with <cg>Physics Bypass</c>
-* Added <co>Place Checkpoint</c> shortcut
-* Added custom keybinds for P1/P2 jump
+* Added <co>Place Checkpoint</c> and <co>Remove Checkpoint</c> shortcuts
+* Added custom keybinds for <co>P1/P2 jump</c>
+* Added <cg>Endscreen Cheat Indicator</c>
+* <co>Auto Safe Mode</c> now stores your attempt state (whether any cheats were active at any time)
+* <cg>Click Between Frames</c> toggle if you have the mod installed
 * <cy>New</c> label variables: 
 `isDualMode`, `cubeIcon`, `shipIcon`, `ballIcon`, `ufoIcon`, `waveIcon`, 
-`robotIcon`, `spiderIcon`, `swingIcon`, `gamemode`, `playerIcon`, `levelDescription`, `frameReal`, `tps`
+`robotIcon`, `spiderIcon`, `swingIcon`, `gamemode`, `playerIcon`, `levelDescription`, 
+`frameReal`, `tps`, `runStart`
 * <cy>Updated</c> <co>RIFT</c> scripting with more features:
     * Added <cg>cfg</c> function to get values from settings
     * Improved overall performance and stability
+    * Fixed some expressions not working as expected
     * Added <cg>int</c>, <cg>float</c> and <cg>str</c> functions, to convert variable types
     * Added <cg>duration</c> function to convert seconds into a formatted time string
     * Added <cg>$</c> operator to evaluate sub-expressions
-* Added <cg>Eclipse API</c> for developers to interact with the mod (TODO: add documentation)
+* Added <cg>Eclipse API</c> for developers to interact with the mod (BetterInfo users might notice a new tab :D)
 
 ## v1.0.0-beta.3
 **Fixes:**

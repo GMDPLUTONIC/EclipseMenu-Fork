@@ -7,9 +7,12 @@
 #include <discord_rpc.h>
 #include <rift.hpp>
 
+#include <Geode/modify/GJBaseGameLayer.hpp>
+
 namespace eclipse::hacks::Global {
 
     class DiscordRPC : public hack::Hack {
+    public:
         constexpr static auto DEFAULT_CLIENT_ID = "1212016614325624852";
         static time_t startTimestamp, levelTimestamp;
 
@@ -170,11 +173,11 @@ namespace eclipse::hacks::Global {
             auto tab = gui::MenuTab::find("Global");
 
             config::setIfEmpty<std::string>("global.discordrpc.clientid", DEFAULT_CLIENT_ID);
-            config::setIfEmpty("global.discordrpc.interval", 200.0f);
+            config::setIfEmpty("global.discordrpc.interval", 250.0f);
             config::setIfEmpty("global.discordrpc.timemode", 1);
 
             startTimestamp = std::time(nullptr);
-            levelTimestamp = std::time(nullptr); // TODO: Level session time
+            levelTimestamp = std::time(nullptr);
 
             // Setting default scripts:
             {
@@ -228,7 +231,8 @@ namespace eclipse::hacks::Global {
                 ->setDescription("Display your current status in Discord.")
                 ->addOptions([this](auto opt) {
                     opt->addInputText("Client ID", "global.discordrpc.clientid");
-                    opt->addInputFloat("Update interval (ms)", "global.discordrpc.interval", 100, FLT_MAX, "%.0f");
+                    opt->addInputFloat("Update interval (ms)", "global.discordrpc.interval", 100, FLT_MAX, "%.0f")
+                        ->setDescription("How often the RPC should update. Lower values may cause lag.");
                     opt->addCombo("Time mode", "global.discordrpc.timemode",
                         {"Disabled", "Total playtime", "Level playtime", "Total+Level playtime"},
                         config::get<int>("global.discordrpc.timemode", 1)
@@ -310,5 +314,13 @@ namespace eclipse::hacks::Global {
     time_t DiscordRPC::levelTimestamp = 0;
 
     REGISTER_HACK(DiscordRPC);
+
+    class $modify(DiscordRPCGJBGLHook, GJBaseGameLayer) {
+        bool init() override {
+            if (!GJBaseGameLayer::init()) return false;
+            DiscordRPC::levelTimestamp = std::time(nullptr);
+            return true;
+        }
+    };
 }
 #endif
