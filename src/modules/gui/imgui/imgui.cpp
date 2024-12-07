@@ -278,7 +278,7 @@ namespace eclipse::gui::imgui {
 
                 if (!popup.isPrompt()) {
                     TextCentered(popup.getMessage());
-                    if (m_theme->button(popup.getButton1())) {
+                    if (m_theme->button(popup.getButton1(), false)) {
                         popup.getCallback()(true);
                         toRemove.push_back(&popup);
                         ImGui::CloseCurrentPopup();
@@ -286,7 +286,7 @@ namespace eclipse::gui::imgui {
                     if (!popup.getButton2().empty()) {
                         // TODO: Make an option for same-line buttons
                         // ImGui::SameLine(0, 2);
-                        if (m_theme->button(popup.getButton2())) {
+                        if (m_theme->button(popup.getButton2(), false)) {
                             popup.getCallback()(false);
                             toRemove.push_back(&popup);
                             ImGui::CloseCurrentPopup();
@@ -297,7 +297,7 @@ namespace eclipse::gui::imgui {
                     ImGui::PushItemWidth(ImGui::GetWindowWidth() - 20);
                     ImGui::InputText("##prompt", &popup.getPromptValue());
                     ImGui::PopItemWidth();
-                    if (m_theme->button(popup.getButton1())) {
+                    if (m_theme->button(popup.getButton1(), false)) {
                         popup.getPromptCallback()(true, popup.getPromptValue());
                         toRemove.push_back(&popup);
                         ImGui::CloseCurrentPopup();
@@ -305,7 +305,7 @@ namespace eclipse::gui::imgui {
                     if (!popup.getButton2().empty()) {
                         // TODO: Make an option for same-line buttons
                         // ImGui::SameLine(0, 2);
-                        if (m_theme->button(popup.getButton2())) {
+                        if (m_theme->button(popup.getButton2(), false)) {
                             popup.getPromptCallback()(false, popup.getPromptValue());
                             toRemove.push_back(&popup);
                             ImGui::CloseCurrentPopup();
