@@ -289,6 +289,12 @@ namespace eclipse::gui::imgui {
             case ComponentTheme::MegaOverlay:
                 m_theme = std::make_unique<themes::MegaOverlay>();
                 break;
+            case ComponentTheme::Gruvbox:
+                m_theme = std::make_unique<themes::Gruvbox>();
+                break;
+            case ComponentTheme::Modern:
+                m_theme = std::make_unique<themes::Modern>();
+                break;
         }
         if (s_initialized) m_theme->init();
     }
