@@ -26,6 +26,10 @@ namespace eclipse::bot {
 
         [[nodiscard]] size_t getInputCount() const { return m_replay.inputs.size(); }
 
+        [[nodiscard]] float getFramerate() const { return m_replay.framerate; }
+
+        void setFramerate(float framerate) { m_replay.framerate = framerate; }
+
         /// @brief Removes all inputs from the currently loaded replay.
         void clearInputs();
 

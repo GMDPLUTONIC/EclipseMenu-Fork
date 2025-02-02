@@ -3,7 +3,7 @@ add_library(third_party INTERFACE)
 
 # Include libraries
 add_library(imgui INTERFACE)
-CPMAddPackage("gh:EclipseMenu/imgui#dac32cb")
+CPMAddPackage("gh:EclipseMenu/imgui#1d4c752")
 target_include_directories(imgui INTERFACE ${imgui_SOURCE_DIR})
 target_sources(imgui INTERFACE
     ${imgui_SOURCE_DIR}/imgui.cpp
@@ -21,8 +21,11 @@ if (NOT ANDROID)
 endif()
 CPMAddPackage("gh:matcool/gd-imgui-cocos#fbd4103")
 CPMAddPackage("gh:maxnut/GDReplayFormat#4950cc2")
-CPMAddPackage("gh:EclipseMenu/rift#e065e9a")
+set(RIFT_INCLUDE_MATJSON ON)
+CPMAddPackage("gh:EclipseMenu/rift#d6dd2bd")
 CPMAddPackage("gh:SpaghettDev/subprocess#e12740b")
+CPMAddPackage("gh:simdutf/simdutf@6.1.0")
+CPMAddPackage("gh:prevter/sinaps#1663e86")
 CPMAddPackage(
     NAME nlohmann_json
     GITHUB_REPOSITORY nlohmann/json
@@ -43,6 +46,8 @@ target_link_libraries(third_party INTERFACE
     imgui-cocos
     nlohmann_json::nlohmann_json
     rift
+    simdutf
+    sinaps
 )
 
 if (NOT ANDROID)

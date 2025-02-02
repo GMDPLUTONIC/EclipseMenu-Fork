@@ -1,5 +1,6 @@
 #include "blur.hpp"
 
+#include <modules/config/config.hpp>
 #include <modules/gui/theming/manager.hpp>
 
 // COMPLETELY stolen from cgytrus/SimplePatchLoader (with permission)
@@ -31,6 +32,8 @@ namespace eclipse::gui::blur {
 
     float blurTimer = 0.f;
     float blurProgress = 0.f;
+
+    geode::Patch* visitVtablePatch = nullptr;
 
     geode::Result<std::string> Shader::compile(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath) {
         auto vertexSource = geode::utils::file::readString(vertexPath);
@@ -196,7 +199,7 @@ namespace eclipse::gui::blur {
     void setupPostProcess() {
         if (utils::shouldUseLegacyDraw()) return;
 
-        auto size = cocos2d::CCEGLView::get()->getFrameSize() * geode::utils::getDisplayFactor();
+        auto size = utils::get<cocos2d::CCEGLView>()->getFrameSize() * geode::utils::getDisplayFactor();
 
         ppRt0.setup((GLsizei)size.width, (GLsizei)size.height);
         ppRt1.setup((GLsizei)size.width, (GLsizei)size.height);
@@ -223,8 +226,8 @@ namespace eclipse::gui::blur {
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        auto vertexPath = std::string{ cocos2d::CCFileUtils::get()->fullPathForFilename("pp-vert.glsl"_spr, false) };
-        auto fragmentPath = std::string{ cocos2d::CCFileUtils::get()->fullPathForFilename("pp-frag.glsl"_spr, false) };
+        auto vertexPath = std::string{ utils::get<cocos2d::CCFileUtils>()->fullPathForFilename("pp-vert.glsl"_spr, false) };
+        auto fragmentPath = std::string{ utils::get<cocos2d::CCFileUtils>()->fullPathForFilename("pp-frag.glsl"_spr, false) };
 
         auto res = ppShader.compile(vertexPath, fragmentPath);
         if (!res) return geode::log::error("Failed to compile shader: {}", res.unwrapErr());
@@ -264,50 +267,75 @@ namespace eclipse::gui::blur {
 
     // hook time yippee
 
-    class $modify(BlurCCNHook, cocos2d::CCNode) {
-        void visit() override {
-            if (static_cast<CCNode*>(this) != cocos2d::CCScene::get() || ppShader.program == 0)
-                return CCNode::visit();
+    void CCSceneVisit(cocos2d::CCScene* self) {
+        if (ppShader.program == 0 || blurProgress == 0.f)
+            return self->CCNode::visit();
 
-            if (blurProgress == 0.f)
-                return CCNode::visit();
+        float blur = 0.05f * (1.f - std::cos(static_cast<float>(std::numbers::pi) * blurProgress)) * 0.5f;
+        if (blur == 0.f)
+            return self->CCNode::visit();
 
-            float blur = 0.05f * (1.f - std::cos(static_cast<float>(std::numbers::pi) * blurProgress)) * 0.5f;
-            if (blur == 0.f)
-                return CCNode::visit();
+        GLint drawFbo = 0;
+        GLint readFbo = 0;
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
+        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFbo);
 
-            GLint drawFbo = 0;
-            GLint readFbo = 0;
-            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
-            glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, ppRt0.fbo);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-            glBindFramebuffer(GL_FRAMEBUFFER, ppRt0.fbo);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        self->CCNode::visit();
 
-            CCNode::visit();
+        glBindVertexArray(ppVao);
+        cocos2d::ccGLUseProgram(ppShader.program);
+        glUniform1i(ppShaderFast, true);
+        glUniform1f(ppShaderRadius, blur);
 
-            glBindVertexArray(ppVao);
-            cocos2d::ccGLUseProgram(ppShader.program);
-            glUniform1i(ppShaderFast, true);
-            glUniform1f(ppShaderRadius, blur);
+        glBindFramebuffer(GL_FRAMEBUFFER, ppRt1.fbo);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-            glBindFramebuffer(GL_FRAMEBUFFER, ppRt1.fbo);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        glUniform1i(ppShaderFirst, GL_TRUE);
+        glBindTexture(GL_TEXTURE_2D, ppRt0.tex);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
-            glUniform1i(ppShaderFirst, GL_TRUE);
-            glBindTexture(GL_TEXTURE_2D, ppRt0.tex);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, drawFbo);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, readFbo);
 
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, drawFbo);
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, readFbo);
+        glUniform1i(ppShaderFirst, GL_FALSE);
+        glBindTexture(GL_TEXTURE_2D, ppRt1.tex);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
-            glUniform1i(ppShaderFirst, GL_FALSE);
-            glBindTexture(GL_TEXTURE_2D, ppRt1.tex);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(0);
+    }
 
-            glBindVertexArray(0);
+    template <typename T>
+    std::vector<uint8_t> toBytes(T value) {
+        std::vector<uint8_t> bytes(sizeof(T));
+        std::memcpy(bytes.data(), &value, sizeof(T));
+        return bytes;
+    }
+
+    void hookCCSceneVisit() {
+        auto virtualOffset = geode::addresser::getVirtualOffset(&cocos2d::CCScene::visit);
+
+        // find the vtable address
+        auto tmpScene = new cocos2d::CCScene();
+        auto vtable = *reinterpret_cast<uintptr_t*>(tmpScene);
+        delete tmpScene;
+
+        // find the visit function entry in the vtable
+        auto visitEntry = reinterpret_cast<uintptr_t*>(vtable + virtualOffset);
+        uintptr_t hookAddr = reinterpret_cast<uintptr_t>(&CCSceneVisit);
+        auto hookAddrBytes = toBytes(hookAddr);
+
+        // write the hook address to the vtable
+        auto res = geode::Mod::get()->patch(visitEntry, hookAddrBytes);
+        if (!res) {
+            geode::log::error("Failed to hook CCScene::visit: {}", res.unwrapErr());
+        } else {
+            visitVtablePatch = res.unwrap();
+            geode::log::debug("Enabled virtual cocos2d::CCScene::visit hook at 0x{:x} for " GEODE_MOD_ID, reinterpret_cast<uintptr_t>(visitEntry));
         }
-    };
+    }
 
     class $modify(BlurCCEGLVPHook, cocos2d::CCEGLViewProtocol) {
         void setFrameSize(float width, float height) override {
@@ -340,6 +368,9 @@ namespace eclipse::gui::blur {
             cleanupPostProcess();
             setupPostProcess();
         });
+
+        auto tm = ThemeManager::get();
+        toggle(tm->getBlurEnabled());
     }
 
     void update(float) {
@@ -347,7 +378,7 @@ namespace eclipse::gui::blur {
         auto duration = tm->getBlurSpeed();
         auto toggled = Engine::get()->isToggled();
 
-        auto deltaTimeMod = cocos2d::CCDirector::get()->getDeltaTime();
+        auto deltaTimeMod = utils::get<cocos2d::CCDirector>()->getActualDeltaTime();
         blurTimer += toggled ? deltaTimeMod : -deltaTimeMod;
         blurTimer = std::clamp(blurTimer, 0.f, duration);
 
@@ -360,6 +391,15 @@ namespace eclipse::gui::blur {
         else blurProgress = blurTimer / duration;
     }
 
+    void toggle(bool enabled) {
+        if (!visitVtablePatch) {
+            if (enabled) hookCCSceneVisit();
+        } else {
+            if (enabled) { (void) visitVtablePatch->enable(); }
+            else { (void) visitVtablePatch->disable(); }
+        }
+    }
+
 }
 
 #else
@@ -369,6 +409,8 @@ namespace eclipse::gui::blur {
     void init() {}
 
     void update(float) {}
+
+    void toggle(bool) {}
 
 }
 

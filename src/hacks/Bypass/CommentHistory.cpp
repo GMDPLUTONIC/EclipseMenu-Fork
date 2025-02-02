@@ -1,18 +1,15 @@
-#include <modules/gui/gui.hpp>
-#include <modules/hack/hack.hpp>
 #include <modules/config/config.hpp>
+#include <modules/gui/gui.hpp>
+#include <modules/gui/components/toggle.hpp>
+#include <modules/hack/hack.hpp>
 
 #include <Geode/modify/ProfilePage.hpp>
 
 namespace eclipse::hacks::Bypass {
-
-    class CommentHistory : public hack::Hack {
+    class $hack(CommentHistory) {
         void init() override {
-            auto tab = gui::MenuTab::find("Bypass");
-
-            tab->addToggle("Comment History Bypass", "bypass.commenthistory")
-                ->handleKeybinds()
-                ->setDescription("Allows you to see any user's comment history. (Created by Uproxide)");
+            auto tab = gui::MenuTab::find("tab.bypass");
+            tab->addToggle("bypass.commenthistory")->handleKeybinds()->setDescription();
         }
 
         [[nodiscard]] const char* getId() const override { return "Comment History Bypass"; }
@@ -30,5 +27,4 @@ namespace eclipse::hacks::Bypass {
             score->m_commentHistoryStatus = originalCommentHistory;
         }
     };
-
 }

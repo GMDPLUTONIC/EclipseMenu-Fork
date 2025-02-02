@@ -1,18 +1,15 @@
-#include <modules/gui/gui.hpp>
-#include <modules/hack/hack.hpp>
 #include <modules/config/config.hpp>
+#include <modules/gui/gui.hpp>
+#include <modules/gui/components/toggle.hpp>
+#include <modules/hack/hack.hpp>
 
 #include <Geode/modify/PlayLayer.hpp>
 
 namespace eclipse::hacks::Level {
-
-    class AutoPracticeMode : public hack::Hack {
+    class $hack(AutoPracticeMode) {
         void init() override {
-            auto tab = gui::MenuTab::find("Level");
-
-            tab->addToggle("Auto Practice Mode", "level.autopracticemode")
-                ->handleKeybinds()
-                ->setDescription("Automatically enables practice mode when entering a level. (Created by Uproxide)");
+            auto tab = gui::MenuTab::find("tab.level");
+            tab->addToggle("level.autopracticemode")->handleKeybinds()->setDescription();
         }
 
         [[nodiscard]] const char* getId() const override { return "Auto Practice Mode"; }

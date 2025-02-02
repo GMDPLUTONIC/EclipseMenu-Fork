@@ -1,14 +1,15 @@
 #pragma once
 
-#include <nlohmann/json.hpp>
-#include <fmt/format.h>
+#include <functional>
 #include <string>
 #include <vector>
-#include <optional>
-#include <functional>
+
+#ifndef INCLUDE_NLOHMANN_JSON_HPP_
+#include <nlohmann/json_fwd.hpp>
+#include <nlohmann/detail/value_t.hpp>
+#endif
 
 namespace eclipse::config {
-
     /// @brief Get the container for the configuration file.
     nlohmann::json& getStorage();
 
@@ -17,6 +18,9 @@ namespace eclipse::config {
 
     /// @brief Used internally to trigger callbacks for a value change
     void executeCallbacks(std::string_view name);
+
+    /// @brief Used internally to trigger callbacks for a value change in temporary storage
+    void executeTempCallbacks(std::string_view name);
 
     /// @brief Load the configuration file.
     void load();
@@ -42,9 +46,7 @@ namespace eclipse::config {
     /// @brief Check if a key exists in the configuration.
     /// @param key Key to check.
     /// @return True if the key exists in the configuration.
-    inline bool has(std::string_view key) {
-        return getStorage().contains(key);
-    }
+    bool has(std::string_view key);
 
     /// @brief Get a value by key from the configuration.
     /// @tparam T Type of the value to get.
@@ -52,12 +54,7 @@ namespace eclipse::config {
     /// @param defaultValue Default value to return if the key does not exist.
     /// @return Value from the configuration or the default value if the key does not exist.
     template<typename T>
-    T get(std::string_view key, const T& defaultValue) {
-        if (!has(key))
-            return defaultValue;
-
-        return getStorage().at(key).get<T>();
-    }
+    T get(std::string_view key, const T& defaultValue);
 
     /// @brief Get a value by key from the configuration.
     /// @note If the key does not exist, it will throw an exception.
@@ -65,22 +62,18 @@ namespace eclipse::config {
     /// @param key Key to get the value from.
     /// @return Value from the configuration.
     template<typename T>
-    geode::Result<T> get(std::string_view key) {
-        if (!has(key))
-            return geode::Err(fmt::format("Key '{}' does not exist", key));
-
-        return geode::Ok(getStorage().at(key).get<T>());
-    }
+    geode::Result<T> get(std::string_view key);
 
     /// @brief Set a value by key in the configuration.
     /// @tparam T Type of the value to set.
     /// @param key Key to set the value to.
     /// @param value Value to set.
     template<typename T>
-    void set(std::string_view key, const T& value) {
-        getStorage()[key] = value;
-        executeCallbacks(key);
-    }
+    void set(std::string_view key, const T& value);
+
+    /// @brief Erase a key from the configuration.
+    /// @param key Key to erase.
+    void erase(std::string_view key);
 
     /// @brief Get the type of value by key in the configuration.
     /// @param key Key to get the type of.
@@ -92,45 +85,29 @@ namespace eclipse::config {
     /// @param key Key to check.
     /// @return True if the value is of the specified type.
     template<typename T>
-    bool is(std::string_view key) {
-        if (!has(key))
-            return false;
-
-        auto type = getType(key);
-        if constexpr (std::is_same_v<T, std::string>) {
-            return type == nlohmann::detail::value_t::string;
-        } else if constexpr (std::is_same_v<T, bool>) {
-            return type == nlohmann::detail::value_t::boolean;
-        } else if constexpr (std::is_same_v<T, int>) {
-            return type == nlohmann::detail::value_t::number_integer;
-        } else if constexpr (std::is_same_v<T, float>) {
-            return type == nlohmann::detail::value_t::number_float;
-        }
-
-        return false;
-    }
+    bool is(std::string_view key);
 
     /// @brief Set a value by key in the configuration if the key does not exist.
     /// @tparam T Type of the value to set.
     /// @param key Key to set the value to.
     /// @param value Value to set.
     template<typename T>
-    void setIfEmpty(std::string_view key, const T& value) {
-        if (!has(key))
-            set(key, value);
-    }
+    void setIfEmpty(std::string_view key, const T& value);
 
     /// @brief Registers a delegate which is called when a specific value in config is changed
     /// @param key Key of the value which should have a delegate
     /// @param callback Callback to call when value is changed
     void addDelegate(std::string_view key, std::function<void()> callback);
 
+    /// @brief Registers a delegate which is called when a specific value in temp is changed
+    /// @param key Key of the value which should have a delegate
+    /// @param callback Callback to call when value is changed
+    void addTempDelegate(std::string_view key, std::function<void()> callback);
+
     /// @brief Check if a key exists in the temporary storage.
     /// @param key Key to check.
     /// @return True if the key exists in the temporary storage.
-    inline bool hasTemp(std::string_view key) {
-        return getTempStorage().contains(key);
-    }
+    inline bool hasTemp(std::string_view key);
 
     /// @brief Get a value by key from the temporary storage.
     /// @tparam T Type of the value to get.
@@ -138,12 +115,7 @@ namespace eclipse::config {
     /// @param defaultValue Default value to return if the key does not exist.
     /// @return Value from the temporary storage or the default value if the key does not exist.
     template<typename T>
-    T getTemp(std::string_view key, const T& defaultValue) {
-        if (!hasTemp(key))
-            return defaultValue;
-
-        return getTempStorage().at(key).get<T>();
-    }
+    T getTemp(std::string_view key, const T& defaultValue);
 
     /// @brief Get a value by key from the temporary storage.
     /// @note If the key does not exist, it will throw an exception.
@@ -151,19 +123,41 @@ namespace eclipse::config {
     /// @param key Key to get the value from.
     /// @return Value from the temporary storage.
     template<typename T>
-    geode::Result<T> getTemp(std::string_view key) {
-        if (!hasTemp(key))
-            return geode::Err(fmt::format("Key '{}' does not exist", key));
-
-        return geode::Ok(getTempStorage().at(key).get<T>());
-    }
+    geode::Result<T> getTemp(std::string_view key);
 
     /// @brief Set a value by key in the temporary storage.
     /// @tparam T Type of the value to set.
     /// @param key Key to set the value to.
     /// @param value Value to set.
     template<typename T>
-    void setTemp(std::string_view key, const T& value) {
-        getTempStorage()[key] = value;
+    void setTemp(std::string_view key, const T& value);
+
+    namespace __impl {
+        template <size_t N>
+        struct Key {
+            char data[N];
+            explicit(false) constexpr Key(const char* str) { std::copy_n(str, N, data); }
+        };
+
+        template <size_t N>
+        Key(const char(&)[N]) -> Key<N - 1>;
+    }
+
+    /// @brief Cached version of get function to avoid multiple lookups.
+    template <__impl::Key key, typename T>
+    T get(const T& defaultValue = T{}) {
+        static T value = (addDelegate(key.data, [] {
+            value = get<T>(key.data, T{});
+        }), get<T>(key.data, defaultValue));
+        return value;
+    }
+
+    /// @brief Cached version of getTemp function to avoid multiple lookups.
+    template <__impl::Key key, typename T>
+    T getTemp(const T& defaultValue = T{}) {
+        static T value = (addTempDelegate(key.data, [] {
+            value = getTemp<T>(key.data, T{});
+        }), getTemp<T>(key.data, defaultValue));
+        return value;
     }
 }

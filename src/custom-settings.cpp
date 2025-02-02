@@ -1,5 +1,7 @@
-#include <Geode/loader/SettingV3.hpp>
+#include <Geode/binding/ButtonSprite.hpp>
 #include <Geode/loader/Mod.hpp>
+#include <Geode/loader/SettingV3.hpp>
+#include <Geode/ui/Popup.hpp>
 #include <modules/gui/theming/manager.hpp>
 
 using namespace geode::prelude;
@@ -25,11 +27,14 @@ public:
     void parseButtonCaption(matjson::Value const& json, std::string const& key) {
         m_buttonCaption = json[key].asString().unwrap();
     }
+
     bool load(matjson::Value const& json) override { return true; }
     bool save(matjson::Value& json) const override { return true; }
     bool isDefaultValue() const override { return true; }
     std::string const& getButtonCaption() const { return m_buttonCaption; }
+
     void reset() override {}
+
     SettingNodeV3* createNode(float width) override;
 };
 
@@ -72,6 +77,7 @@ protected:
     }
 
     void onCommit() override {}
+
     void onResetToDefault() override {}
 
 public:

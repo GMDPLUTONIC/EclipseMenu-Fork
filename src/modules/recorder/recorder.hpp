@@ -1,29 +1,25 @@
 #pragma once
 #include <Geode/platform/platform.hpp>
-#include <eclipse.ffmpeg-api/include/render_settings.hpp>
+#include "ffmpeg-api/events.hpp"
 
 #include "rendertexture.hpp"
-
-#include <mutex>
-#include <chrono>
+#include "spinlock.hpp"
 
 namespace eclipse::recorder {
-
     class Recorder {
     public:
         void start();
         void stop();
 
-        void startAudio(const std::filesystem::path& renderPath);
-        void stopAudio();
-
         void captureFrame();
 
         bool isRecording() const { return m_recording; }
-        bool isRecordingAudio() const { return m_recordingAudio; }
+        std::string getRecordingDuration() const;
 
-        std::vector<std::string> getAvailableCodecs();
-    
+        void setCallback(const std::function<void(std::string const&)>& callback) { m_callback = callback; }
+
+        static std::vector<std::string> getAvailableCodecs();
+
     public:
         ffmpeg::RenderSettings m_renderSettings{};
 
@@ -31,11 +27,12 @@ namespace eclipse::recorder {
         void recordThread();
 
     private:
-        bool m_recording;
-        bool m_recordingAudio;
-        bool m_frameHasData;
+        volatile bool m_recording = false;
+        utils::spinlock m_frameReady;
         std::vector<uint8_t> m_currentFrame;
-        std::mutex m_lock;
-        RenderTexture m_renderTexture;
+        RenderTexture m_renderTexture{};
+        uint64_t m_recordingDuration = 0;
+
+        std::function<void(std::string const&)> m_callback;
     };
 };

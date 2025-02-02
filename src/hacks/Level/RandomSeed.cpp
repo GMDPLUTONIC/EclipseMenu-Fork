@@ -1,27 +1,27 @@
-#include <modules/gui/gui.hpp>
-#include <modules/hack/hack.hpp>
 #include <modules/config/config.hpp>
+#include <modules/gui/gui.hpp>
+#include <modules/gui/components/toggle.hpp>
+#include <modules/hack/hack.hpp>
 
 #include <Geode/modify/GameToolbox.hpp>
 
 #ifndef GEODE_IS_WINDOWS // TODO: Make a patch for Windows
 namespace eclipse::hacks::Level {
-
-    class RandomSeed : public hack::Hack {
+    class $hack(RandomSeed) {
         void init() override {
-            auto tab = gui::MenuTab::find("Level");
+            auto tab = gui::MenuTab::find("tab.level");
 
             config::setIfEmpty("level.randomseed.seed", 1);
 
-            tab->addToggle("Random Seed", "level.randomseed")
-                ->handleKeybinds()
-                ->setDescription("Sets a seed of choice for all random triggers.")
-                ->addOptions([](std::shared_ptr<gui::MenuTab> options) {
-                    options->addInputInt("Seed", "level.randomseed.seed");
-                });
+            tab->addToggle("level.randomseed")
+               ->handleKeybinds()
+               ->setDescription()
+               ->addOptions([](std::shared_ptr<gui::MenuTab> options) {
+                   options->addInputInt("level.randomseed.seed", "level.randomseed.seed");
+               });
         }
 
-        [[nodiscard]] bool isCheating() override { return config::get<bool>("level.randomseed", false); }
+        [[nodiscard]] bool isCheating() const override { return config::get<"level.randomseed", bool>(); }
         [[nodiscard]] const char* getId() const override { return "Random Seed"; }
     };
 
@@ -37,4 +37,5 @@ namespace eclipse::hacks::Level {
         }
     };
 }
+
 #endif

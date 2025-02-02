@@ -10,7 +10,6 @@
 #include <optional>
 
 namespace eclipse::keybinds {
-
     enum class Keys {
         None,
 
@@ -87,7 +86,8 @@ namespace eclipse::keybinds {
         /// @param callback The callback to execute when the keybind is pressed.
         /// @param internal Whether the keybind is internal or not.
         Keybind(Keys key, std::string id, std::string title, std::function<void(bool)> callback, bool internal = false)
-            : m_key(key), m_id(std::move(id)), m_title(std::move(title)), m_callback(std::move(callback)), m_internal(internal) {}
+            : m_key(key), m_id(std::move(id)), m_title(std::move(title)), m_callback(std::move(callback)),
+              m_internal(internal) {}
 
         /// @brief Get the key of the keybind.
         [[nodiscard]] Keys getKey() const { return m_key; }
@@ -119,6 +119,9 @@ namespace eclipse::keybinds {
         /// @brief Set the key of the keybind.
         void setKey(Keys key) { m_key = key; }
 
+        /// @brief Set the title of the keybind.
+        void setTitle(std::string title) { m_title = std::move(title); }
+
     private:
         Keys m_key;
         std::string m_id;
@@ -144,6 +147,11 @@ namespace eclipse::keybinds {
         /// @param id The ID of the keybind.
         /// @param callback The callback to execute when the keybind is pressed.
         Keybind& addListener(const std::string& id, const std::function<void(bool)>& callback);
+
+        /// @brief Unregister a keybind from the manager. This will completely remove it from the configuration.
+        /// @param id The ID of the keybind.
+        /// @return Whether the keybind was successfully unregistered.
+        bool unregisterKeybind(const std::string& id);
 
         /// @brief Load keybinds from config.
         void init();
@@ -188,6 +196,4 @@ namespace eclipse::keybinds {
         friend bool isKeyPressed(Keys key);
         friend bool isKeyReleased(Keys key);
     };
-
-
 }

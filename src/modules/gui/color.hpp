@@ -1,12 +1,14 @@
 #pragma once
 
-#include <imgui.h>
-#include <cocos2d.h>
 #include <string>
-#include <cmath>
-#include <nlohmann/json.hpp>
+#include <Geode/cocos/include/ccTypes.h>
 
-#include <fmt/format.h>
+#ifndef INCLUDE_NLOHMANN_JSON_HPP_
+#include <nlohmann/json_fwd.hpp>
+#endif
+
+struct ImVec4;
+typedef unsigned int ImU32;
 
 namespace eclipse::gui {
     struct Color {
@@ -25,6 +27,7 @@ namespace eclipse::gui {
         Color(float r, float g, float b, float a = 1.0f) : r(r), g(g), b(b), a(a) {}
         Color(const Color& other) = default;
         explicit Color(const cocos2d::ccColor4F& other) : r(other.r), g(other.g), b(other.b), a(other.a) {}
+        explicit Color(const cocos2d::ccColor4B& other) : r(other.r / 255.0f), g(other.g / 255.0f), b(other.b / 255.0f), a(other.a / 255.0f) {}
 
         Color(Color&& other) noexcept : r(other.r), g(other.g), b(other.b), a(other.a) {
             other.r = other.g = other.b = 0;
@@ -44,10 +47,13 @@ namespace eclipse::gui {
         Color& operator=(const ImVec4& col2);
 
         operator cocos2d::ccColor4F() const;
+        operator cocos2d::ccColor4B() const;
 
         /// @brief Returns a pointer to the color data
         /// @return Pointer to the color data
         float* data() { return &r; }
+
+        GLubyte getAlphaByte() const { return static_cast<GLubyte>(a * 255); }
 
         /// @brief Creates a new color from HSV values
         /// @param h Hue
@@ -60,9 +66,7 @@ namespace eclipse::gui {
         /// @brief Creates a new color from HSV values
         /// @param hsv HSV values
         /// @return New color
-        static Color fromHSV(const ImVec4& hsv) {
-            return fromHSV(hsv.x, hsv.y, hsv.z, hsv.w);
-        }
+        static Color fromHSV(const ImVec4& hsv);
 
         enum class IntType {
             RGBA, ARGB,

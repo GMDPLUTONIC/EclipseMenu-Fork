@@ -1,22 +1,90 @@
 #include "imgui.hpp"
-#include <modules/config/config.hpp>
 #include <imgui-cocos.hpp>
 #include <utils.hpp>
-#include <modules/gui/theming/manager.hpp>
-#include <modules/gui/gui.hpp>
 #include <misc/cpp/imgui_stdlib.h>
+#include <modules/config/config.hpp>
+#include <modules/gui/gui.hpp>
+#include <modules/gui/components/base-component.hpp>
+#include <modules/gui/theming/manager.hpp>
+#include <modules/i18n/translations.hpp>
 
 #include "components/megahack/megahack.hpp"
 #include "components/megaoverlay/megaoverlay.hpp"
-#include "components/modern/modern.hpp"
-#include "components/gruvbox/gruvbox.hpp"
 #include "layouts/tabbed.hpp"
 #include "layouts/panel.hpp"
 #include "layouts/sidebar.hpp"
-#include "modules/gui/gui.hpp"
+#include "layouts/tabbed.hpp"
+
+#ifdef ECLIPSE_DEBUG_BUILD
+#include <modules/debug/benchmark.hpp>
+#include <modules/keybinds/manager.hpp>
+
+static bool isTracingPopupOpen = false;
+
+void showTracingPopup() {
+    using namespace eclipse;
+    static auto _ = [] {
+        auto& keybind = keybinds::Manager::get()->addListener("debug.tracing", [](bool down) {
+            if (down) {
+                isTracingPopupOpen = !isTracingPopupOpen;
+                if (auto imgui = gui::imgui::ImGuiRenderer::get())
+                    imgui->refreshDisplayState();
+            }
+        });
+        keybind.setKey(keybinds::Keys::F3);
+        return 0;
+    }();
+
+    if (!isTracingPopupOpen) return;
+
+    if (ImGui::Begin("Profiler", &isTracingPopupOpen)) {
+        auto& tabs = debug::Profiler::getTimes();
+        ImGui::Text("Total profilers: %zu", tabs.size());
+        if (ImGui::BeginTabBar("TracingTabs")) {
+            for (auto const& [tab, data] : tabs) {
+                auto ind = tab.find_first_of(')');
+                auto name = tab.substr(ind + 1);
+
+                if (ImGui::BeginTabItem(name.c_str())) {
+                    ImGui::Text("Function: %s", name.c_str());
+                    auto filename = tab.substr(1, ind);
+                    ImGui::Text("File: %s", filename.c_str());
+
+                    if (data.empty()) {
+                        ImGui::Text("No data available.");
+                        ImGui::EndTabItem();
+                        continue;
+                    }
+
+                    std::vector<float> times;
+                    times.reserve(data.size());
+                    auto it = data.begin();
+                    float minTime = *it;
+                    float maxTime = *it;
+                    while (it != data.end()) {
+                        times.push_back(*it);
+                        if (*it < minTime) minTime = *it;
+                        if (*it > maxTime) maxTime = *it;
+                        ++it;
+                    }
+
+                    // build a graph
+                    auto availableSize = ImGui::GetContentRegionAvail();
+                    ImGui::PlotLines("##graph", times.data(), times.size(), 0, nullptr, minTime, maxTime, ImVec2(availableSize.x, 100));
+
+                    ImGui::Text("Average: %.3f us", debug::Profiler::averageTimeFor(tab) / 1000.f);
+
+                    ImGui::EndTabItem();
+                }
+            }
+            ImGui::EndTabBar();
+        }
+    }
+    ImGui::End();
+}
+#endif
 
 namespace eclipse::gui::imgui {
-
     bool ImGuiRenderer::s_initialized = false;
 
     std::string_view FontManager::FontMetadata::getName() const {
@@ -30,9 +98,35 @@ namespace eclipse::gui::imgui {
         return m_font;
     }
 
+    const ImWchar* getDefaultRange() {
+        static constexpr ImWchar ranges[] = {
+            0x0020, 0x00FF, // Basic Latin + Latin Supplement
+            0x0100, 0x017F, // Latin Extended-A
+            0,
+        };
+        return &ranges[0];
+    }
+
+    const ImWchar* getGlyphRange(i18n::GlyphRange range) {
+        switch (range) {
+            case i18n::GlyphRange::Greek: return ImGui::GetIO().Fonts->GetGlyphRangesGreek();
+            case i18n::GlyphRange::Korean: return ImGui::GetIO().Fonts->GetGlyphRangesKorean();
+            case i18n::GlyphRange::Japanese: return ImGui::GetIO().Fonts->GetGlyphRangesJapanese();
+            case i18n::GlyphRange::ChineseFull: return ImGui::GetIO().Fonts->GetGlyphRangesChineseFull();
+            case i18n::GlyphRange::ChineseSimplified: return ImGui::GetIO().Fonts->GetGlyphRangesChineseSimplifiedCommon();
+            case i18n::GlyphRange::Cyrillic: return ImGui::GetIO().Fonts->GetGlyphRangesCyrillic();
+            case i18n::GlyphRange::Thai: return ImGui::GetIO().Fonts->GetGlyphRangesThai();
+            case i18n::GlyphRange::Vietnamese: return ImGui::GetIO().Fonts->GetGlyphRangesVietnamese();
+            default: return getDefaultRange();
+        }
+    }
+
     void FontManager::FontMetadata::load() {
         auto fontSize = ThemeManager::get()->getFontSize() * DEFAULT_SCALE;
-        m_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(m_path.string().c_str(), fontSize);
+        m_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(
+            m_path.string().c_str(), fontSize,
+            nullptr, getGlyphRange(i18n::getRequiredGlyphRanges())
+        );
     }
 
     std::vector<FontManager::FontMetadata> FontManager::fetchAvailableFonts() {
@@ -42,7 +136,7 @@ namespace eclipse::gui::imgui {
             for (auto& entry : std::filesystem::directory_iterator(path)) {
                 if (entry.path().extension() != ".ttf") continue;
                 auto filename = entry.path().stem().string();
-                FontMetadata font {filename, entry.path()};
+                FontMetadata font{filename, entry.path()};
                 result.push_back(font);
             }
         };
@@ -116,14 +210,24 @@ namespace eclipse::gui::imgui {
         s_initialized = true;
     }
 
+    void ImGuiRenderer::updateTabs() {
+        // init will recreate all tabs
+        if (m_layout) m_layout->init();
+    }
+
     void ImGuiRenderer::draw() {
         auto scale = ImGui::GetIO().DisplaySize.x / 1920.f;
         config::setTemp("ui.scale", scale);
+
+        bool wantVisible = m_isOpened;
 
         m_insideDraw = true;
         if (m_theme) m_theme->update();
         if (m_layout) m_layout->draw();
         renderPopups();
+        #ifdef ECLIPSE_DEBUG_BUILD
+        showTracingPopup();
+        #endif
         m_insideDraw = false;
         setLayoutMode(m_queuedMode);
     }
@@ -133,6 +237,7 @@ namespace eclipse::gui::imgui {
 
         utils::updateCursorState(m_isOpened);
         m_layout->toggle(m_isOpened);
+        refreshDisplayState();
     }
 
     bool ImGuiRenderer::isToggled() const {
@@ -192,7 +297,7 @@ namespace eclipse::gui::imgui {
         m_theme->visit(component);
     }
 
-    bool ImGuiRenderer::beginWindow(const std::string &title) const {
+    bool ImGuiRenderer::beginWindow(const std::string& title) const {
         if (!m_theme) {
             geode::log::error("beginWindow called without initialized theme");
             return false;
@@ -215,6 +320,7 @@ namespace eclipse::gui::imgui {
 
     void ImGuiRenderer::showPopup(const Popup& popup) {
         m_popups.push_back(popup);
+        refreshDisplayState();
     }
 
     void ImGuiRenderer::drawFinished() {
@@ -222,6 +328,7 @@ namespace eclipse::gui::imgui {
             f();
         }
         m_runAfterDrawingQueue.clear();
+        refreshDisplayState();
     }
 
     // https://stackoverflow.com/a/70073137/16349466
@@ -260,8 +367,10 @@ namespace eclipse::gui::imgui {
             bool isOpen = false;
 
             ImGui::OpenPopup(popupName.c_str(), ImGuiPopupFlags_NoOpenOverExistingPopup | ImGuiPopupFlags_NoOpenOverItems);
-            ImGui::SetNextWindowSizeConstraints({MIN_POPUP_WIDTH * scale, MIN_POPUP_HEIGHT * scale},
-                                                {MAX_POPUP_WIDTH * scale, MAX_POPUP_HEIGHT * scale});
+            ImGui::SetNextWindowSizeConstraints(
+                {MIN_POPUP_WIDTH * scale, MIN_POPUP_HEIGHT * scale},
+                {MAX_POPUP_WIDTH * scale, MAX_POPUP_HEIGHT * scale}
+            );
             if (ImGui::BeginPopupModal(popupName.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                 isOpen = true;
                 // if (keybinds::isKeyPressed(keybinds::Keys::Escape)) {
@@ -278,7 +387,7 @@ namespace eclipse::gui::imgui {
 
                 if (!popup.isPrompt()) {
                     TextCentered(popup.getMessage());
-                    if (m_theme->button(popup.getButton1())) {
+                    if (m_theme->button(popup.getButton1(), false)) {
                         popup.getCallback()(true);
                         toRemove.push_back(&popup);
                         ImGui::CloseCurrentPopup();
@@ -286,7 +395,7 @@ namespace eclipse::gui::imgui {
                     if (!popup.getButton2().empty()) {
                         // TODO: Make an option for same-line buttons
                         // ImGui::SameLine(0, 2);
-                        if (m_theme->button(popup.getButton2())) {
+                        if (m_theme->button(popup.getButton2(), false)) {
                             popup.getCallback()(false);
                             toRemove.push_back(&popup);
                             ImGui::CloseCurrentPopup();
@@ -297,7 +406,7 @@ namespace eclipse::gui::imgui {
                     ImGui::PushItemWidth(ImGui::GetWindowWidth() - 20);
                     ImGui::InputText("##prompt", &popup.getPromptValue());
                     ImGui::PopItemWidth();
-                    if (m_theme->button(popup.getButton1())) {
+                    if (m_theme->button(popup.getButton1(), false)) {
                         popup.getPromptCallback()(true, popup.getPromptValue());
                         toRemove.push_back(&popup);
                         ImGui::CloseCurrentPopup();
@@ -305,7 +414,7 @@ namespace eclipse::gui::imgui {
                     if (!popup.getButton2().empty()) {
                         // TODO: Make an option for same-line buttons
                         // ImGui::SameLine(0, 2);
-                        if (m_theme->button(popup.getButton2())) {
+                        if (m_theme->button(popup.getButton2(), false)) {
                             popup.getPromptCallback()(false, popup.getPromptValue());
                             toRemove.push_back(&popup);
                             ImGui::CloseCurrentPopup();
@@ -328,5 +437,16 @@ namespace eclipse::gui::imgui {
             }
             return false;
         }).begin(), m_popups.end());
+    }
+
+    void ImGuiRenderer::refreshDisplayState() const {
+        bool wantVisible = m_isOpened;
+        if (m_layout) wantVisible |= m_layout->wantStayVisible();
+        wantVisible |= !m_popups.empty();
+        #ifdef ECLIPSE_DEBUG_BUILD
+        wantVisible |= isTracingPopupOpen;
+        #endif
+
+        ImGuiCocos::get().setVisible(wantVisible);
     }
 }

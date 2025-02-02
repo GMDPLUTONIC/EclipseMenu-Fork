@@ -1,30 +1,43 @@
-#include <modules/gui/popup.hpp>
-#include <modules/gui/gui.hpp>
-#include <modules/hack/hack.hpp>
-#include <modules/config/config.hpp>
 #include <modules/bot/bot.hpp>
-#include <modules/keybinds/manager.hpp>
+#include <modules/config/config.hpp>
+#include <modules/gui/gui.hpp>
+#include <modules/gui/popup.hpp>
+#include <modules/gui/cocos/cocos.hpp>
+#include <modules/gui/components/button.hpp>
+#include <modules/gui/components/filesystem-combo.hpp>
+#include <modules/gui/components/radio.hpp>
+#include <modules/hack/hack.hpp>
+#include <modules/i18n/translations.hpp>
 
-#include <Geode/modify/PlayLayer.hpp>
-#include <Geode/modify/PlayerObject.hpp>
-#include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/CheckpointObject.hpp>
+#include <Geode/modify/GJBaseGameLayer.hpp>
+#include <Geode/modify/PlayerObject.hpp>
+#include <Geode/modify/PlayLayer.hpp>
 
 using namespace geode::prelude;
 
 namespace eclipse::hacks::Bot {
-
     static bot::Bot s_bot;
 
     void newReplay() {
-        Popup::prompt("New replay", "Enter a name for the new replay:", [&](bool result, std::string name) {
-            if(!result)
-                return;
-            
-            s_bot.save(Mod::get()->getSaveDir() / "replays" / (name + ".gdr"));
-            config::set("bot.selectedreplay", Mod::get()->getSaveDir() / "replays" / (name + ".gdr"));
+        Popup::prompt(
+            i18n::get_("bot.new-replay"),
+            i18n::get_("bot.new-replay.msg"),
+            [&](bool result, std::string name) {
+                if (!result)
+                    return;
 
-        }, "Create", "Cancel", "");
+                s_bot.save(Mod::get()->getSaveDir() / "replays" / (name + ".gdr"));
+                config::set("bot.selectedreplay", Mod::get()->getSaveDir() / "replays" / (name + ".gdr"));
+
+                // refresh cocos ui page
+                if (auto cocos = gui::cocos::CocosRenderer::get())
+                    cocos->refreshPage();
+            },
+            i18n::get_("common.create"),
+            i18n::get_("common.cancel"),
+            ""
+        );
     }
 
     void saveReplay() {
@@ -35,48 +48,71 @@ namespace eclipse::hacks::Bot {
 
         std::filesystem::path replayPath = config::get<std::filesystem::path>("bot.selectedreplay", "temp");
 
-        if(std::filesystem::exists(replayPath)) {
-            Popup::create("Warning", fmt::format("Are you sure you want to overwrite {}?", replayPath.filename().stem().string()), "Yes", "No", [&](bool result) {
-                if(!result)
-                    return;
+        if (std::filesystem::exists(replayPath)) {
+            return Popup::create(
+                i18n::get_("common.warning"),
+                i18n::format("bot.overwrite", replayPath.filename().stem().string()),
+                i18n::get_("common.yes"),
+                i18n::get_("common.no"),
+                [&](bool result) {
+                    if (!result)
+                        return;
 
-                std::filesystem::path confirmReplayDirectory = config::get<std::filesystem::path>("bot.selectedreplay", "temp");
+                    auto confirmReplayDirectory = config::get<std::filesystem::path>("bot.selectedreplay", "temp");
 
-                s_bot.save(confirmReplayDirectory);
-                Popup::create("Replay saved", fmt::format("Replay {} saved with {} inputs", confirmReplayDirectory.filename().stem().string(), s_bot.getInputCount()));
-                
-                config::set("bot.selectedreplay", confirmReplayDirectory);
-            });
-            return;
+                    s_bot.save(confirmReplayDirectory);
+                    Popup::create(
+                        i18n::get_("bot.saved"),
+                        i18n::format(
+                            "bot.saved.msg", confirmReplayDirectory.filename().stem().string(), s_bot.getInputCount()
+                        )
+                    );
+
+                    config::set("bot.selectedreplay", confirmReplayDirectory);
+                }
+            );
         }
 
         s_bot.save(replayPath);
-        Popup::create("Replay saved", fmt::format("Replay {} saved with {} inputs", replayPath.filename().stem().string(), s_bot.getInputCount()));
+        Popup::create(
+            i18n::get_("bot.saved"),
+            i18n::format("bot.saved.msg", replayPath.filename().stem().string(), s_bot.getInputCount())
+        );
         config::set("bot.selectedreplay", replayPath);
     }
 
     void confirmLoad(std::filesystem::path const& replayPath) {
         auto res = s_bot.load(replayPath);
         if (res.isErr()) {
-            Popup::create("Error", fmt::format("Failed to load replay: {}", res.unwrapErr()));
-            return;
+            return Popup::create(
+                i18n::get_("common.error"),
+                i18n::format("bot.load-fail", res.unwrapErr())
+            );
         }
-        Popup::create("Replay loaded", fmt::format("Replay {} loaded with {} inputs", replayPath.filename().stem(), s_bot.getInputCount()));
+        Popup::create(
+            i18n::get_("bot.loaded"),
+            i18n::format("bot.loaded.msg", replayPath.filename().stem(), s_bot.getInputCount())
+        );
     }
 
     void loadReplay() {
         std::filesystem::path replayPath = config::get<std::string>("bot.selectedreplay", "");
 
-        if(s_bot.getInputCount() > 0) {
-            Popup::create("Warning", "Your current replay will be overwritten. Are you sure?", "Yes", "No", [&](bool result) {
-                if(!result)
-                    return;
+        if (s_bot.getInputCount() > 0) {
+            return Popup::create(
+                i18n::get_("common.warning"),
+                i18n::get_("bot.overwrite-current"),
+                i18n::get_("common.yes"),
+                i18n::get_("common.no"),
+                [&](bool result) {
+                    if (!result)
+                        return;
 
-                std::filesystem::path confirmReplayPath = config::get<std::string>("bot.selectedreplay", "");
+                    std::filesystem::path confirmReplayPath = config::get<std::string>("bot.selectedreplay", "");
 
-                confirmLoad(confirmReplayPath);
-            });
-            return;
+                    confirmLoad(confirmReplayPath);
+                }
+            );
         }
 
         confirmLoad(replayPath);
@@ -84,47 +120,72 @@ namespace eclipse::hacks::Bot {
 
     void deleteReplay() {
         std::filesystem::path replayPath = config::get<std::string>("bot.selectedreplay", "");
-        if(!std::filesystem::exists(replayPath)) {
-            Popup::create("Invalid Replay", "Please select a replay you would like to delete.");
-            return;
+        if (!std::filesystem::exists(replayPath)) {
+            return Popup::create(
+                i18n::get_("bot.delete-invalid"),
+                i18n::get_("bot.delete-invalid.msg")
+            );
         }
         std::string replayName = replayPath.filename().stem().string();
-        Popup::create("Warning", fmt::format("Are you sure you want to delete {}?", replayName), "Yes", "No", [replayPath, replayName](bool result) {
-            if (!result) return;
-            if (std::filesystem::exists(replayPath)) {
-                Popup::create("Replay deleted", fmt::format("{} has been deleted.", replayName));
-                std::filesystem::remove(replayPath);
-                // apparently i cannot put the Popup below here otherwise some memory corruption happens, WHY? its not even a pointer!!
-                config::set("bot.selectedreplay", "");
+        Popup::create(
+            i18n::get_("common.warning"),
+            i18n::format("bot.confirm-delete", replayName),
+            i18n::get_("common.yes"),
+            i18n::get_("common.no"),
+            [replayPath, replayName](bool result) {
+                if (!result) return;
+                if (std::filesystem::exists(replayPath)) {
+                    Popup::create(
+                        i18n::get_("bot.deleted"),
+                        i18n::format("bot.deleted.msg", replayName)
+                    );
+                    std::filesystem::remove(replayPath);
+                    // apparently i cannot put the Popup below here otherwise some memory corruption happens, WHY? its not even a pointer!!
+                    config::set("bot.selectedreplay", "");
+
+                    // refresh cocos ui page
+                    if (auto cocos = gui::cocos::CocosRenderer::get())
+                        cocos->refreshPage();
+                }
             }
-        });
+        );
     }
 
-    class Bot : public hack::Hack {
+    class $hack(Bot) {
         void init() override {
-            const auto updateBotState = [](int state) { s_bot.setState(static_cast<bot::State>(state)); };
+            const auto updateBotState = [](int state) {
+                static bool wasTps = eclipse::config::get<bool>("global.tpsbypass.toggle", true);
+                if(s_bot.getState() == bot::State::DISABLED)
+                    wasTps = eclipse::config::get<bool>("global.tpsbypass.toggle", true);
+
+                s_bot.setState(static_cast<bot::State>(state));
+
+                if(state == 0)
+                    eclipse::config::set("global.tpsbypass.toggle", wasTps);
+            };
 
             config::setIfEmpty("bot.state", 0);
             updateBotState(config::get<int>("bot.state", 0));
 
-            auto tab = gui::MenuTab::find("Bot");
+            auto tab = gui::MenuTab::find("tab.bot");
 
-            tab->addRadioButton("Disabled", "bot.state", 0)->callback(updateBotState)->handleKeybinds();
-            tab->addRadioButton("Record", "bot.state", 1)->callback(updateBotState)->handleKeybinds();
-            tab->addRadioButton("Playback", "bot.state", 2)->callback(updateBotState)->handleKeybinds();
+            tab->addRadioButton("bot.disabled", "bot.state", 0)->callback(updateBotState)->handleKeybinds();
+            tab->addRadioButton("bot.record", "bot.state", 1)->callback(updateBotState)->handleKeybinds();
+            tab->addRadioButton("bot.playback", "bot.state", 2)->callback(updateBotState)->handleKeybinds();
 
-            tab->addFilesystemCombo("Replays", "bot.selectedreplay", Mod::get()->getSaveDir() / "replays");
-            tab->addButton("New")->callback(newReplay);
-            tab->addButton("Save")->callback(saveReplay);
-            tab->addButton("Load")->callback(loadReplay);
-            tab->addButton("Delete")->callback(deleteReplay);
+            tab->addFilesystemCombo("bot.replays", "bot.selectedreplay", Mod::get()->getSaveDir() / "replays");
+            tab->addButton("common.new")->callback(newReplay);
+            tab->addButton("common.save")->callback(saveReplay);
+            tab->addButton("common.load")->callback(loadReplay);
+            tab->addButton("common.delete")->callback(deleteReplay);
         }
 
-        [[nodiscard]] bool isCheating() override {
-            auto state = config::get<int>("bot.state", 0);
+        [[nodiscard]] bool isCheating() const override {
+            auto state = config::get<"bot.state", int>(0);
             // only check if we are in playback mode and there are inputs
             return state == 2 && s_bot.getInputCount() != 0;
         }
+
         [[nodiscard]] const char* getId() const override { return "Bot"; }
     };
 
@@ -138,14 +199,21 @@ namespace eclipse::hacks::Bot {
         }
 
         void resetLevel() {
-            bool p1hold = m_player1->m_holdingButtons[1];
-            bool p2hold = m_player2->m_holdingButtons[1];
-
             PlayLayer::resetLevel();
 
             static Mod* cbfMod = geode::Loader::get()->getLoadedMod("syzzi.click_between_frames");
-            if (s_bot.getState() != bot::State::DISABLED && cbfMod)
-                cbfMod->setSettingValue<bool>("soft-toggle", true);
+            if (s_bot.getState() != bot::State::DISABLED) {
+                if(cbfMod)
+                    cbfMod->setSettingValue<bool>("soft-toggle", true);
+
+                config::set<bool>("level.checkpointdelay", true);
+                config::set<bool>("global.tpsbypass.toggle", true);
+                if (s_bot.getState() == bot::State::RECORD) {
+                    s_bot.setFramerate(utils::getTPS());
+                } else {
+                    config::set<float>("global.tpsbypass", s_bot.getFramerate());
+                }
+            }
 
             if (s_bot.getState() == bot::State::RECORD) {
                 //gd does this automatically for holding but not releases so we do it manually
@@ -174,7 +242,7 @@ namespace eclipse::hacks::Bot {
         }
 
         void loadFromCheckpoint(CheckpointObject* checkpoint) {
-            PlayLayer* playLayer = PlayLayer::get();
+            PlayLayer* playLayer = utils::get<PlayLayer>();
 
             if (s_bot.getState() != bot::State::RECORD || !playLayer)
                 return PlayLayer::loadFromCheckpoint(checkpoint);
@@ -186,6 +254,33 @@ namespace eclipse::hacks::Bot {
     };
 
     class $modify(BotBGLHook, GJBaseGameLayer) {
+        void simulateClick(PlayerButton button, bool down, bool player2) {
+            auto performButton = down ? &PlayerObject::pushButton : &PlayerObject::releaseButton;
+
+            // in two player mode, only one player should be controlled
+            if (m_levelSettings->m_twoPlayerMode) {
+                PlayerObject* player = player2 ? m_player2 : m_player1;
+                (player->*performButton)(button);
+            } else {
+                // otherwise, click both players (if dual mode is enabled)
+                (m_player1->*performButton)(button);
+                if (m_gameState.m_isDualMode)
+                    (m_player2->*performButton)(button);
+            }
+
+            // register the click for touch triggers
+            m_effectManager->playerButton(down, !player2);
+
+            // increment click count
+            if (down) {
+                m_clicks++;
+                if (button == PlayerButton::Jump) {
+                    // not sure what this does, but this is how it is in original handleButton
+                    m_bUnk30b8 = true;
+                }
+            }
+        }
+
         void processCommands(float dt) {
             GJBaseGameLayer::processCommands(dt);
 
@@ -195,7 +290,7 @@ namespace eclipse::hacks::Bot {
             std::optional<gdr::Input> input = std::nullopt;
 
             while ((input = s_bot.poll(m_gameState.m_currentProgress)) != std::nullopt) {
-                GJBaseGameLayer::handleButton(input->down, (int) input->button, !input->player2);
+                this->simulateClick((PlayerButton) input->button, input->down, input->player2);
             }
         }
 
@@ -205,10 +300,7 @@ namespace eclipse::hacks::Bot {
             if (s_bot.getState() != bot::State::RECORD)
                 return;
 
-            bool realPlayer1 = !m_levelSettings->m_twoPlayerMode || player1 || !m_gameState.m_isDualMode;
-
-            s_bot.recordInput(m_gameState.m_currentProgress, (PlayerButton) button, !realPlayer1, down);
+            s_bot.recordInput(m_gameState.m_currentProgress, (PlayerButton) button, !player1, down);
         }
     };
-
 }

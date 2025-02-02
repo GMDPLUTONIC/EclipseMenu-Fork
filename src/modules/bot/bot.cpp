@@ -1,6 +1,5 @@
 #include <modules/gui/gui.hpp>
 #include <modules/hack/hack.hpp>
-#include <modules/config/config.hpp>
 
 #include "bot.hpp"
 
@@ -52,7 +51,7 @@ namespace eclipse::bot {
     }
 
     void Bot::save(std::filesystem::path path) {
-        m_replay.author = GJAccountManager::sharedState()->m_username;
+        m_replay.author = utils::get<GJAccountManager>()->m_username;
         m_replay.duration = m_replay.inputs.size() > 0 ? m_replay.inputs[m_replay.inputs.size() - 1].frame / m_replay.framerate : 0;
 
         geode::ByteVector data = m_replay.exportData();

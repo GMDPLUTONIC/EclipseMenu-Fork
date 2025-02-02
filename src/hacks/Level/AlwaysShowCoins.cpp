@@ -1,18 +1,18 @@
-#include <modules/gui/gui.hpp>
-#include <modules/hack/hack.hpp>
 #include <modules/config/config.hpp>
+#include <modules/gui/gui.hpp>
+#include <modules/gui/components/toggle.hpp>
+#include <modules/hack/hack.hpp>
 
+#include <Geode/binding/GameManager.hpp>
 #include <Geode/modify/GameObject.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
-#include <Geode/binding/GameManager.hpp>
 
 namespace eclipse::hacks::Level {
-
     void onChangeShowCoins(bool state) {
         static cocos2d::CCObject* uncollectedSecretCoin = nullptr;
         static cocos2d::CCObject* uncollectedUserCoin = nullptr;
 
-        auto* GM = GameManager::sharedState();
+        auto* GM = utils::get<GameManager>();
 
         if (!uncollectedSecretCoin)
             uncollectedSecretCoin = GM->m_unkAnimationDict->objectForKey(-142)->copy();
@@ -38,14 +38,11 @@ namespace eclipse::hacks::Level {
         }
     }
 
-    class AlwaysShowCoins : public hack::Hack {
+    class $hack(AlwaysShowCoins) {
         void init() override {
-            auto tab = gui::MenuTab::find("Level");
-
-            tab->addToggle("Always Show Coins", "level.alwaysshowcoins")
-                ->handleKeybinds()
-                ->setDescription("Always shows the uncollected variant of the coins.")
-                ->callback(onChangeShowCoins);
+            auto tab = gui::MenuTab::find("tab.level");
+            tab->addToggle("level.alwaysshowcoins")->handleKeybinds()->setDescription()
+               ->callback(onChangeShowCoins);
         }
 
         void lateInit() override {

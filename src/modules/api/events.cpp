@@ -1,10 +1,20 @@
 #include <eclipse.hpp>
-#include <modules/gui/gui.hpp>
 #include <modules/config/config.hpp>
+#include <modules/gui/gui.hpp>
 #include <modules/labels/variables.hpp>
+
+#include <modules/gui/components/button.hpp>
+#include <modules/gui/components/label.hpp>
+#include <modules/gui/components/toggle.hpp>
+#include <modules/gui/components/input-float.hpp>
+
+#include "mods.hpp"
 
 namespace eclipse::api {
 using namespace geode::prelude;
+
+std::map<std::string, std::function<bool()>> g_cheats;
+std::map<std::string, std::function<bool()>> const& getCheats() { return g_cheats; }
 
 template <config::SupportedType T>
 void createGetConfigListener() {
@@ -35,8 +45,8 @@ void createGetRiftVariableListener() {
         auto val = labels::VariableManager::get().getVariable(std::string(e->getName()));
 
 #define HANDLE_CASE(type) \
-    if (val.is##type()) { e->setResult(Ok(val.get##type())); }\
-    else { e->setResult(Err("Value is not a " #type)); }
+if (val.is##type()) { e->setResult(Ok(val.get##type())); }\
+else { e->setResult(Err("Value is not a " #type)); }
 
         if constexpr (std::same_as<T, std::string>) {
             HANDLE_CASE(String)
@@ -49,6 +59,8 @@ void createGetRiftVariableListener() {
         } else if constexpr (std::same_as<T, label::null_t>) {
             if (val.isNull()) e->setResult(Ok(std::monostate{}));
             else e->setResult(Err("Value is not null"));
+        } else if constexpr (std::same_as<T, matjson::Value>) {
+            e->setResult(Ok(val.toJson()));
         } else {
             e->setResult(Err("Unsupported type"));
         }
@@ -102,6 +114,32 @@ $execute {
         e->setUniqueID(button->getUID());
         return ListenerResult::Stop;
     });
+    new EventListener<EventFilter<events::AddInputFloatEvent>>(+[](events::AddInputFloatEvent* e) {
+        auto tab = gui::MenuTab::find(e->getTabName());
+        auto input = tab->addInputFloat(e->getTitle(), e->getID());
+        input->callback([callback = std::get<0>(e->getCallbacks())](float value) {
+            std::invoke(callback, value);
+        });
+        e->setUniqueID(input->getUID());
+        return ListenerResult::Stop;
+    });
+
+    /* Special Components */
+    new EventListener<EventFilter<events::SetLabelTextEvent>>(+[](events::SetLabelTextEvent* e) {
+        auto label = gui::Component::find(e->getID());
+        if (!label || label->getType() != gui::ComponentType::Label) return ListenerResult::Stop;
+        static_pointer_cast<gui::LabelComponent>(label)->setText(e->getText());
+        return ListenerResult::Stop;
+    });
+    new EventListener<EventFilter<events::SetInputFloatParamsEvent>>(+[](events::SetInputFloatParamsEvent* e) {
+        auto input = gui::Component::find(e->getID());
+        if (!input || input->getType() != gui::ComponentType::InputFloat) return ListenerResult::Stop;
+        auto inputFloat = static_pointer_cast<gui::InputFloatComponent>(input);
+        if (e->getMin()) inputFloat->setMin(e->getMin().value());
+        if (e->getMax()) inputFloat->setMax(e->getMax().value());
+        if (e->getFormat()) inputFloat->setFormat(e->getFormat().value());
+        return ListenerResult::Stop;
+    });
 
     /* Component Descriptions */
     new EventListener<EventFilter<events::SetComponentDescriptionEvent>>(+[](events::SetComponentDescriptionEvent* e) {
@@ -123,7 +161,12 @@ $execute {
 
     /* RIFT */
     new EventListener<EventFilter<events::FormatRiftStringEvent>>(+[](events::FormatRiftStringEvent* e) {
-        e->setResult(rift::format(e->getSource(), labels::VariableManager::get().getVariables()));
+        auto res = rift::format(e->getSource(), labels::VariableManager::get().getVariables());
+        if (res.isErr()) {
+            e->setResult(res.unwrapErr().message());
+        } else {
+            e->setResult(res.unwrap());
+        }
         return ListenerResult::Stop;
     });
     createGetRiftVariableListener<std::string>();
@@ -131,11 +174,19 @@ $execute {
     createGetRiftVariableListener<int64_t>();
     createGetRiftVariableListener<double>();
     createGetRiftVariableListener<label::null_t>();
+    createGetRiftVariableListener<matjson::Value>();
     createSetRiftVariableListener<std::string>();
     createSetRiftVariableListener<bool>();
     createSetRiftVariableListener<int64_t>();
     createSetRiftVariableListener<double>();
     createSetRiftVariableListener<label::null_t>();
+    createSetRiftVariableListener<matjson::Value>();
+
+    /* Modules */
+    new EventListener<EventFilter<events::RegisterCheatEvent>>(+[](events::RegisterCheatEvent* e) {
+        g_cheats[e->getName()] = e->getCallback();
+        return ListenerResult::Stop;
+    });
 }
 
 }

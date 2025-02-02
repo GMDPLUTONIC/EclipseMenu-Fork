@@ -1,10 +1,16 @@
 #pragma once
 #include <modules/gui/gui.hpp>
-#include "popup/popup.hpp"
 
 namespace eclipse::gui::cocos {
 
     class OptionsPopup;
+    class ModalPopup;
+
+    class Popup;
+    class TabMenu;
+    class TabButton;
+    class ScrollLayer;
+    class ContentView;
 
     class CocosRenderer : public Renderer {
     public:
@@ -25,12 +31,20 @@ namespace eclipse::gui::cocos {
         void queueAfterDrawing(const std::function<void()>& func) override;
         void showPopup(const eclipse::Popup& popup) override;
 
-        void registerOptionsPopup(OptionsPopup* popup) { m_optionsPopups.push_back(popup); }
-        void unregisterOptionsPopup(OptionsPopup* popup) { std::erase(m_optionsPopups, popup); }
+        /// @brief Used to refresh the selected page contents in the popup. Use this when you edit components within the page.
+        void refreshPage() const;
+
+        /// @brief Get the selected tab in the popup. If popup is not open, returns an empty string.
+        [[nodiscard]] std::string_view getSelectedTab() const;
+
+        /// @brief Will queue the node to be closed after the main popup closes.
+        void registerModal(cocos2d::CCNode* modal) { if (m_popup) m_extraPopups.push_back(modal); }
+        /// @brief Will remove the node from the queue to be closed after the main popup closes.
+        void unregisterModal(cocos2d::CCNode* modal) { std::erase(m_extraPopups, modal); }
 
     private:
         Popup* m_popup = nullptr;
-        std::vector<OptionsPopup*> m_optionsPopups;
+        std::vector<cocos2d::CCNode*> m_extraPopups;
     };
 
 }

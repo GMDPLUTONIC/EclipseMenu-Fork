@@ -1,12 +1,7 @@
 #pragma once
 
-#include <Geode/platform/platform.hpp>
-#include <utils.hpp>
 #include <memory>
-#include <Geode/loader/Hook.hpp>
-#include <Geode/loader/Log.hpp>
-
-#define REGISTER_HACK(hackClass) $execute { eclipse::hack::Hack::registerHack<hackClass>(); }
+#include <utils.hpp>
 
 constexpr int32_t SAFE_HOOK_PRIORITY = 0x500000;
 constexpr int32_t FIRST_HOOK_PRIORITY = -0x500000;
@@ -70,16 +65,14 @@ do {\
         auto hook = res.unwrap();\
         hooks.push_back(hook);\
     }\
-    geode::queueInMainThread([hooks]{\
+    auto value = config::get(id, false);\
+    for (auto h : hooks) {\
+        h->setAutoEnable(value);\
+    }\
+    config::addDelegate(id, [hooks] {\
         auto value = config::get(id, false);\
-        for (auto h : hooks) {\
+        for (auto h : hooks)\
             (void)(value ? h->enable() : h->disable());\
-        }\
-        config::addDelegate(id, [hooks] {\
-            auto value = config::get(id, false);\
-            for (auto h : hooks)\
-                (void)(value ? h->enable() : h->disable());\
-        });\
     });\
 } while (0)
 
@@ -90,17 +83,15 @@ do {\
     for (auto& [name, hook] : self.m_hooks) {\
         hooks.push_back(hook.get());\
     }\
-    geode::queueInMainThread([hooks]{\
+    auto value = config::get(id, false);\
+    for (auto h : hooks) {\
+        h->setAutoEnable(value);\
+    }\
+    config::addDelegate(id, [hooks] {\
         auto value = config::get(id, false);\
         for (auto h : hooks) {\
             (void)(value ? h->enable() : h->disable());\
         }\
-        config::addDelegate(id, [hooks] {\
-            auto value = config::get(id, false);\
-            for (auto h : hooks) {\
-                (void)(value ? h->enable() : h->disable());\
-            }\
-        });\
     });\
 } while (0)
 
@@ -148,31 +139,17 @@ static void onModify(auto& self) {\
     HOOKS_TOGGLE_ALL(id);\
 }
 
-namespace eclipse::hack {
+#ifdef GEODE_IS_WINDOWS
+    #define ECLIPSE_DLL __declspec(dllexport)
+#else
+    #define ECLIPSE_DLL __attribute__((visibility("default")))
+#endif
 
+namespace eclipse::hack {
     /// @brief Base class for all hacks.
     class Hack {
     public:
         virtual ~Hack() = default;
-
-        /// @brief Registers a hack to be initialized
-        static void registerHack(std::shared_ptr<Hack> hack);
-
-        /// @brief Registers a hack by its type.
-        template<typename T, typename = std::enable_if_t<std::is_base_of_v<Hack, T>>>
-        static void registerHack() { registerHack(std::make_shared<T>()); }
-
-        /// @brief Finds a hack by its ID.
-        [[nodiscard]] static std::weak_ptr<Hack> find(const std::string& id);
-
-        /// @brief Get all registered hacks.
-        [[nodiscard]] static const std::vector<std::shared_ptr<Hack>>& getHacks();
-
-        /// @brief Initializes all hacks.
-        static void initializeHacks();
-
-        /// @brief Late initializes all hacks.
-        static void lateInitializeHacks();
 
         /// @brief Initializes the hack. Used to add GUI elements.
         virtual void init() = 0;
@@ -183,8 +160,8 @@ namespace eclipse::hack {
         /// @brief Callback for CCSchedule::update, called every frame.
         virtual void update() {}
 
-        /// @brief Returns whether the hack should be considered cheating and is enabled.
-        [[nodiscard]] virtual bool isCheating() { return false; }
+        /// @brief Check whether the hack should trip the safe mode.
+        [[nodiscard]] virtual bool isCheating() const { return false; }
 
         /// @brief Get the hack's ID. (unique identifier)
         [[nodiscard]] virtual const char* getId() const = 0;
@@ -193,4 +170,44 @@ namespace eclipse::hack {
         [[nodiscard]] virtual int32_t getPriority() const { return 0; }
     };
 
+    using HackPtr = std::shared_ptr<Hack>;
+    using WeakHackPtr = std::weak_ptr<Hack>;
+
+    /// @brief Finds a hack by its ID.
+    [[nodiscard]] WeakHackPtr find(std::string_view id);
+
+    /// @brief Get all registered hacks. (non-const)
+    [[nodiscard]] std::vector<HackPtr>& getHacks();
+
+    /// @brief Get hacks that have an update method.
+    [[nodiscard]] std::vector<HackPtr>& getUpdatedHacks();
+
+    /// @brief Get hacks that have an isCheating method.
+    [[nodiscard]] std::vector<HackPtr>& getCheatingHacks();
+
+    /// @brief Check if all hacks have already been initialized.
+    [[nodiscard]] bool isLateInit();
+
+    /// @brief Initializes all hacks.
+    void initializeHacks();
+
+    /// @brief Late initializes all hacks.
+    void lateInitializeHacks();
+
+    #define REGISTER_HACK(hackClass) $execute {\
+        auto& hacks = eclipse::hack::getHacks();\
+        auto hack = std::make_shared<hackClass>();\
+        hacks.push_back(hack);\
+        if (eclipse::hack::isLateInit()) {\
+            hack->init();\
+        }\
+        if constexpr (!std::is_same_v<decltype(&hackClass::update), decltype(&eclipse::hack::Hack::update)>) {\
+            eclipse::hack::getUpdatedHacks().push_back(hack);\
+        }\
+        if constexpr (!std::is_same_v<decltype(&hackClass::isCheating), decltype(&eclipse::hack::Hack::isCheating)>) {\
+            eclipse::hack::getCheatingHacks().push_back(hack);\
+        }\
+    }
+
+    #define $hack(name) dummy_##name##_hack; struct ECLIPSE_DLL name : eclipse::hack::Hack
 }

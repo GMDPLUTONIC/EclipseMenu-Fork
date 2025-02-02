@@ -1,20 +1,17 @@
-#include <modules/gui/gui.hpp>
-#include <modules/hack/hack.hpp>
 #include <modules/config/config.hpp>
+#include <modules/gui/gui.hpp>
+#include <modules/gui/components/toggle.hpp>
+#include <modules/hack/hack.hpp>
 
-#include <Geode/modify/SliderTouchLogic.hpp>
 #include <Geode/modify/GJScaleControl.hpp>
+#include <Geode/modify/SliderTouchLogic.hpp>
 
 namespace eclipse::hacks::Creator {
-
     // TODO: bypass certain sliders in editor
-    class SliderLimit : public hack::Hack {
+    class $hack(SliderLimit) {
         void init() override {
-            auto tab = gui::MenuTab::find("Creator");
-
-            tab->addToggle("Slider Limit", "creator.sliderlimit")
-                    ->handleKeybinds()
-                    ->setDescription("Removes the min/max limit on sliders.");
+            auto tab = gui::MenuTab::find("tab.creator");
+            tab->addToggle("creator.sliderlimit")->handleKeybinds()->setDescription();
         }
 
         [[nodiscard]] const char* getId() const override { return "Slider Limit"; }
@@ -33,11 +30,11 @@ namespace eclipse::hacks::Creator {
             if (this->m_rotated) {
                 // auto clamped = std::clamp(position.y, -delta, delta);
                 auto clamped = position.y; // Remove the clamping
-                this->m_thumb->setPosition({ 0.f, clamped });
+                this->m_thumb->setPosition({0.f, clamped});
             } else {
                 // auto clamped = std::clamp(position.x, -delta, delta);
                 auto clamped = position.x; // Remove the clamping
-                this->m_thumb->setPosition({ clamped, 0.f });
+                this->m_thumb->setPosition({clamped, 0.f});
             }
 
             if (this->m_activateThumb)
@@ -48,10 +45,10 @@ namespace eclipse::hacks::Creator {
         }
     };
 
-    class $modify (SliderLimitGJSHook, GJScaleControl) {
+    class $modify(SliderLimitGJSHook, GJScaleControl) {
         ADD_HOOKS_DELEGATE("creator.sliderlimit")
 
-        void ccTouchMoved(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
+        void ccTouchMoved(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override {
             GJScaleControl::ccTouchMoved(touch, event);
 
             if (m_sliderXY && m_sliderXY->m_touchLogic->m_activateThumb) {
@@ -63,9 +60,9 @@ namespace eclipse::hacks::Creator {
                 updateLabelXY(value);
                 this->sliderChanged(m_sliderXY->getThumb());
 
-                if (EditorUI::get()) EditorUI::get()->scaleXYChanged(value, value, m_scaleLocked);
+                if (auto editorUI = utils::get<EditorUI>())
+                    editorUI->scaleXYChanged(value, value, m_scaleLocked);
             }
         }
     };
-
 }

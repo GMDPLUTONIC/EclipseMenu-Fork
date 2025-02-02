@@ -1,18 +1,15 @@
-#include <modules/gui/gui.hpp>
-#include <modules/hack/hack.hpp>
 #include <modules/config/config.hpp>
+#include <modules/gui/gui.hpp>
+#include <modules/gui/components/toggle.hpp>
+#include <modules/hack/hack.hpp>
 
 #include <Geode/modify/PlayLayer.hpp>
 
 namespace eclipse::hacks::Level {
-
-    class PauseDuringComplete : public hack::Hack {
+    class $hack(PauseDuringComplete) {
         void init() override {
-            auto tab = gui::MenuTab::find("Level");
-
-            tab->addToggle("Pause During Complete", "level.pauseduringcomplete")
-                ->setDescription("Allows you to pause during the level complete cutscene.")
-                ->handleKeybinds();
+            auto tab = gui::MenuTab::find("tab.level");
+            tab->addToggle("level.pauseduringcomplete")->setDescription()->handleKeybinds();
         }
 
         [[nodiscard]] const char* getId() const override { return "Pause During Complete"; }

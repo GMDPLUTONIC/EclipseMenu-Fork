@@ -1,5 +1,6 @@
 #include "float-button.hpp"
 #include <modules/config/config.hpp>
+#include <modules/utils/SingletonCache.hpp>
 
 #include <Geode/Geode.hpp>
 #include <Geode/modify/CCScene.hpp>
@@ -33,13 +34,38 @@ namespace eclipse::gui {
         if (!CCMenu::init())
             return false;
 
+        // setup settings
+        m_maxOpacity = config::get<float>("float-btn.max-opacity", 1.f);
+        m_minOpacity = config::get<float>("float-btn.min-opacity", 0.5f);
+        m_showInLevel = config::get<bool>("float-btn.show-in-level", false);
+        m_showInEditor = config::get<bool>("float-btn.show-in-editor", true);
+        auto scale = config::get<float>("float-btn.scale", 0.25f);
+
+        // add delegates
+        config::addDelegate("float-btn.max-opacity", [this] {
+            m_maxOpacity = config::get<float>("float-btn.max-opacity", 1.f);
+        });
+        config::addDelegate("float-btn.min-opacity", [this] {
+            m_minOpacity = config::get<float>("float-btn.min-opacity", 0.5f);
+        });
+        config::addDelegate("float-btn.show-in-level", [this] {
+            m_showInLevel = config::get<bool>("float-btn.show-in-level", false);
+        });
+        config::addDelegate("float-btn.show-in-editor", [this] {
+            m_showInEditor = config::get<bool>("float-btn.show-in-editor", true);
+        });
+        config::addDelegate("float-btn.scale", [this] {
+            this->setScale(config::get<float>("float-btn.scale", 0.25f));
+        });
+
+        // setup button
         this->setZOrder(256);
         this->setPosition({0, 0});
         this->setID("floating-button"_spr);
         this->scheduleUpdate();
 
         m_sprite = CCSprite::create("ECLIPSE-android.png"_spr);
-        m_sprite->setScale(0.25f);
+        m_sprite->setScale(scale);
         m_sprite->setOpacity(m_minOpacity * 255);
         m_sprite->setPosition({
             config::get<float>("float-btn.x", 480.f),
@@ -51,13 +77,16 @@ namespace eclipse::gui {
         CCScene::get()->addChild(this);
         geode::SceneManager::get()->keepAcrossScenes(this);
 
+        // im mostly sure this will override the next priorities, so i guess this should not be a force prio
+        // utils::get<cocos2d::CCTouchDispatcher>()->registerForcePrio(this, 2);
+
         return true;
     }
 
     void FloatingButton::update(float) {
         this->setVisible(!shouldHide());
 
-        auto dt = CCDirector::get()->getActualDeltaTime();
+        auto dt = utils::get<CCDirector>()->getActualDeltaTime();
         if (m_haveReleased) {
             m_postClickTimer -= dt;
             if (m_postClickTimer <= 0) {
@@ -82,16 +111,22 @@ namespace eclipse::gui {
             m_shouldMove = false; // finished moving
         }
 
+        auto radius = getRadius();
+        auto winSize = utils::get<CCDirector>()->getWinSize();
+        newPoint.x = std::clamp(newPoint.x, radius, winSize.width - radius);
+        newPoint.y = std::clamp(newPoint.y, radius, winSize.height - radius);
+
         this->m_sprite->setPosition(newPoint);
-        config::set<float>("float-btn.x", m_holdPosition.x);
-        config::set<float>("float-btn.y", m_holdPosition.y);
+
+        config::set<float>("float-btn.x", newPoint.x);
+        config::set<float>("float-btn.y", newPoint.y);
     }
 
     bool FloatingButton::shouldHide() const {
-        if (auto pl = PlayLayer::get(); !m_showInLevel && pl)
+        if (auto pl = utils::get<PlayLayer>(); !m_showInLevel && pl)
             return !pl->m_isPaused && !pl->m_hasCompletedLevel;
 
-        if (auto le = LevelEditorLayer::get(); !m_showInLevel && le)
+        if (auto le = utils::get<LevelEditorLayer>(); !m_showInLevel && le)
             return le->m_playbackMode == PlaybackMode::Playing;
 
         return false;
@@ -156,10 +191,14 @@ namespace eclipse::gui {
     }
 
     void FloatingButton::registerWithTouchDispatcher() {
-        CCTouchDispatcher::get()->addTargetedDelegate(this, -1000, true);
+        eclipse::utils::get<CCTouchDispatcher>()->addTargetedDelegate(this, -1000, true);
     }
 
-#ifdef GEODE_IS_MOBILE
+    FloatingButton::~FloatingButton() {
+        // utils::get<cocos2d::CCTouchDispatcher>()->unregisterForcePrio(this);
+    }
+
+#ifdef ECLIPSE_USE_FLOATING_BUTTON
     class $modify(CCScene) {
         /// Allows our button to stay top-most, passing z-order of the node below the button.
         /// Shout-out to QOLMod for the idea.

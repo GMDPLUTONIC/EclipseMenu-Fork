@@ -1,53 +1,47 @@
 #include "variables.hpp"
-#include <modules/config/config.hpp>
 #include <utils.hpp>
+#include <modules/config/config.hpp>
+#include <modules/utils/SingletonCache.hpp>
 
-#include <Geode/binding/LevelEditorLayer.hpp>
+#include <Geode/Loader.hpp>
 #include <Geode/binding/GameManager.hpp>
 #include <Geode/binding/GJGameLevel.hpp>
+#include <Geode/binding/LevelEditorLayer.hpp>
 #include <Geode/binding/PlayerObject.hpp>
 #include <Geode/binding/PlayLayer.hpp>
 #include <Geode/loader/Mod.hpp>
-#include <Geode/Loader.hpp>
 
-#include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
+#include <Geode/modify/PlayLayer.hpp>
 
 #include <rift/config.hpp>
 
 namespace eclipse::labels {
+    static std::vector<EffectGameObject*> s_coins;
 
-    rift::Value getConfigValue(std::span<rift::Value> args) {
-        if (args.size() != 1)
-            return rift::Value::from("<cfg requires string argument>");
-        auto key = args[0].toString();
-        if (!config::has(key))
-            return rift::Value::null();
+    rift::Value getConfigValue(std::string key) {
+        if (!config::has(key)) {
+            return {};
+        }
         switch (config::getType(key)) {
-            case nlohmann::detail::value_t::string:
-                return rift::Value::string(config::get<std::string>(key).unwrap());
-            case nlohmann::detail::value_t::boolean:
-                return rift::Value::boolean(config::get<bool>(key).unwrap());
-            case nlohmann::detail::value_t::number_integer:
-                return rift::Value::integer(config::get<int>(key).unwrap());
-            case nlohmann::detail::value_t::number_float:
-                return rift::Value::floating(config::get<float>(key).unwrap());
-            default:
-                return rift::Value::null();
+            case nlohmann::detail::value_t::string: return config::get<std::string>(key).unwrap();
+            case nlohmann::detail::value_t::boolean: return config::get<bool>(key).unwrap();
+            case nlohmann::detail::value_t::number_integer: return config::get<int>(key).unwrap();
+            case nlohmann::detail::value_t::number_float: return config::get<float>(key).unwrap();
+            default: return {};
         }
     }
 
     $on_mod(Loaded) {
-        rift::config::addRuntimeFunction("cfg", getConfigValue);
+        rift::Config::get().makeFunction("cfg", getConfigValue);
     }
 
     VariableManager& VariableManager::get() {
-        static VariableManager instance;
-        static bool initialized = false;
-        if (!initialized) {
-            instance.init();
-            initialized = true;
-        }
+        static VariableManager instance = [] {
+            VariableManager manager;
+            manager.init();
+            return manager;
+        }();
         return instance;
     }
 
@@ -56,44 +50,104 @@ namespace eclipse::labels {
         auto* loader = geode::Loader::get();
 
         // Mod variables
-        m_variables["modVersion"] = rift::Value::string(mod->getVersion().toNonVString());
-        m_variables["geodeVersion"] = rift::Value::string(geode::Loader::get()->getVersion().toNonVString());
-        m_variables["platform"] = rift::Value::string(
-            GEODE_WINDOWS("Windows")
-            GEODE_ANDROID("Android")
-            GEODE_MACOS("macOS")
-            GEODE_IOS("iOS")
-        );
-        m_variables["gameVersion"] = rift::Value::string(loader->getGameVersion());
+        m_variables["modVersion"] = mod->getVersion().toNonVString();
+        m_variables["geodeVersion"] = geode::Loader::get()->getVersion().toNonVString();
+        m_variables["platform"] = GEODE_WINDOWS("Windows")
+                GEODE_ANDROID("Android")
+                GEODE_MACOS("macOS")
+                GEODE_IOS("iOS");
+        m_variables["gameVersion"] = loader->getGameVersion();
         auto allMods = loader->getAllMods();
-        m_variables["totalMods"] = rift::Value::integer(static_cast<int>(allMods.size()));
-        m_variables["enabledMods"] = rift::Value::integer(static_cast<int>(std::ranges::count_if(allMods, [](auto* mod) {
-            return mod->shouldLoad();
-        })));
+        m_variables["totalMods"] = static_cast<int64_t>(allMods.size());
+        m_variables["enabledMods"] = rift::Value::integer(
+            std::ranges::count_if(allMods, [](auto* mod) { return mod->shouldLoad(); })
+        );
 
         // Emojis :D
-        m_variables["starEmoji"] = rift::Value::string("⭐");
-        m_variables["moonEmoji"] = rift::Value::string("🌙");
-        m_variables["heartEmoji"] = rift::Value::string("❤️");
-        m_variables["checkEmoji"] = rift::Value::string("✅");
-        m_variables["crossEmoji"] = rift::Value::string("❌");
-        m_variables["exclamationEmoji"] = rift::Value::string("❗");
-        m_variables["questionEmoji"] = rift::Value::string("❓");
-        m_variables["fireEmoji"] = rift::Value::string("🔥");
-        m_variables["snowflakeEmoji"] = rift::Value::string("❄️");
-        m_variables["catEmoji"] = rift::Value::string("🐱");
-        m_variables["dogEmoji"] = rift::Value::string("🐶");
-        m_variables["speakingHeadEmoji"] = rift::Value::string("🗣️");
-        m_variables["robotEmoji"] = rift::Value::string("🤖");
-        m_variables["alienEmoji"] = rift::Value::string("👽");
-        m_variables["ghostEmoji"] = rift::Value::string("👻");
-        m_variables["skullEmoji"] = rift::Value::string("💀");
-        m_variables["babyEmoji"] = rift::Value::string("👶");
+        m_variables["starEmoji"] = "⭐";
+        m_variables["moonEmoji"] = "🌙";
+        m_variables["heartEmoji"] = "❤️";
+        m_variables["brokenHeartEmoji"] = "💔";
+        m_variables["checkEmoji"] = "✅";
+        m_variables["crossEmoji"] = "❌";
+        m_variables["exclamationEmoji"] = "❗";
+        m_variables["questionEmoji"] = "❓";
+        m_variables["fireEmoji"] = "🔥";
+        m_variables["snowflakeEmoji"] = "❄️";
+        m_variables["catEmoji"] = "🐱";
+        m_variables["dogEmoji"] = "🐶";
+        m_variables["speakingHeadEmoji"] = "🗣️";
+        m_variables["robotEmoji"] = "🤖";
+        m_variables["alienEmoji"] = "👽";
+        m_variables["ghostEmoji"] = "👻";
+        m_variables["skullEmoji"] = "💀";
+        m_variables["babyEmoji"] = "👶";
+        m_variables["likeEmoji"] = "👍";
+        m_variables["dislikeEmoji"] = "👎";
+        m_variables["personInSteamyRoomEmoji"] = "🧖";
+        m_variables["sleepingAccommodationEmoji"] = "🛌";
+        m_variables["eclipseEmoji"] = "🌗";
+        m_variables["nerdEmoji"] = "🤓";
+        m_variables["sobEmoji"] = "😭";
+        m_variables["explodingHeadEmoji"] = "🤯";
+        m_variables["diamondEmoji"] = "💎";
+        m_variables["diamondShardsEmoji"] = "💠";
+        m_variables["geodeEmoji"] = "🪩";
+        m_variables["orbsEmoji"] = "🔹";
+        m_variables["emoji100"] = "💯";
+        m_variables["shushingFaceEmoji"] = "🤫";
+        m_variables["bearEmoji"] = "🐻";
+        m_variables["foxEmoji"] = "🦊";
+        m_variables["gunEmoji"] = "🔫";
+        m_variables["faceWithRaisedEyebrowEmoji"] = "🤨";
+        m_variables["moyaiEmoji"] = "🗿";
+        m_variables["screamEmoji"] = "😱";
+        m_variables["sunglassesEmoji"] = "😎";
+        m_variables["heartEyesEmoji"] = "😍";
+        m_variables["smilingImpEmoji"] = "😈";
+        m_variables["clownEmoji"] = "🤡";
+        m_variables["fishEmoji"] = "🐟";
+        m_variables["sparklesEmoji"] = "✨";
+        m_variables["partyPopperEmoji"] = "🎉";
+        m_variables["pigEmoji"] = "🐷";
+        m_variables["moonWithFaceEmoji"] = "🌚";
+        m_variables["fullMoonFaceEmoji"] = "🌝";
+        m_variables["sunWithFaceEmoji"] = "🌞";
+        m_variables["monkeyEmoji"] = "🐵";
+        m_variables["seeNoEvilMonkey"] = "🙈";
+        m_variables["hearNoEvilMonkey"] = "🙉";
+        m_variables["speakNoEvilMonkey"] = "🙊";
+        m_variables["crownEmoji"] = "👑";
+        m_variables["prayEmoji"] = "🙏";
+
+        // special emojis
+        m_variables["emojis"] = rift::Object{
+            {"userCoin", rift::Array{"🛞", "🔵"}},
+            {"secretCoin", rift::Array{"⭕", "🟡"}},
+            {"startPos", "🧿"},
+            {"practice", "♦️"},
+        };
+
+        // regional indicators
+
+        m_variables["ri"] = rift::Object{
+            {"a", "🇦"}, {"b", "🇧"}, {"c", "🇨"}, {"d", "🇩"},
+            {"e", "🇪"}, {"f", "🇫"}, {"g", "🇬"}, {"h", "🇭"},
+            {"i", "🇮"}, {"j", "🇯"}, {"k", "🇰"}, {"l", "🇱"},
+            {"m", "🇲"}, {"n", "🇳"}, {"o", "🇴"}, {"p", "🇵"},
+            {"q", "🇶"}, {"r", "🇷"}, {"s", "🇸"}, {"t", "🇹"},
+            {"u", "🇺"}, {"v", "🇻"}, {"w", "🇼"}, {"x", "🇽"},
+            {"y", "🇾"}, {"z", "🇿"},
+            {"num", rift::Array{
+                "0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣",
+                "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"
+            }},
+        };
 
         // Fetch everything else
-        m_variables["fps"] = rift::Value::floating(0.f);
-        m_variables["realFps"] = rift::Value::floating(0.f);
-        m_variables["tps"] = rift::Value::floating(0.f);
+        m_variables["fps"] = 0.f;
+        m_variables["realFps"] = 0.f;
+        m_variables["tps"] = 0.f;
         refetch();
     }
 
@@ -103,7 +157,7 @@ namespace eclipse::labels {
 
     rift::Value VariableManager::getVariable(const std::string& name) const {
         auto it = m_variables.find(name);
-        if (it == m_variables.end()) return rift::Value::null();
+        if (it == m_variables.end()) return {};
         return it->second;
     }
 
@@ -217,35 +271,148 @@ namespace eclipse::labels {
 
     void VariableManager::updateFPS() {
         auto fps = getFPS();
-        m_variables["realFps"] = rift::Value::floating(fps);
-        m_variables["fps"] = rift::Value::floating(accumulateFPS(fps));
+        m_variables["realFps"] = fps;
+        m_variables["fps"] = accumulateFPS(fps);
+    }
+
+    constexpr int FIRST_PATH = 30;
+    constexpr int LAST_PATH = 39;
+    static const std::array<std::string, 10> PATH_NAMES = {
+        "fire", "ice", "poison", "shadow", "lava",
+        "earth", "blood", "metal", "light", "soul"
+    };
+    static const std::array<std::string, 15> STAT_NAMES_1 = {
+        "totalJumps", "totalAttempts", "completedLevels", "completedOnlineLevels",
+        "demons", "stars", "completedMapPacks", "goldCoins", "playersDestroyed",
+        "likedLevels", "ratedLevels", "userCoins", "diamonds", "orbs", "dailies",
+    };
+
+    inline int getStatFromDictionary(cocos2d::CCDictionary* dict, gd::string const& key) {
+        auto& str = dict->valueForKey(key)->m_sString;
+        if (str.empty()) return 0;
+        if (auto res = geode::utils::numFromString<int>(str)) {
+            return res.unwrap();
+        }
+        return 0;
+    }
+
+    // when m_usePlayerStatsCCDictionary is true
+    void playerStatsWithCCDict(rift::Object& variables) {
+        auto gsm = utils::get<GameStatsManager>();
+        auto playerStats = gsm->m_playerStats;
+
+        auto& stats = variables["stats"];
+        for (int i = 0; i < STAT_NAMES_1.size(); i++) {
+            stats[STAT_NAMES_1[i]] = getStatFromDictionary(playerStats, fmt::to_string(i + 1));
+        }
+
+        auto& stats2 = const_cast<rift::Object&>(stats.getObject()); // FIXME: add this api to rift
+        stats2["keys"] = getStatFromDictionary(playerStats, "21");
+        stats2["totalOrbs"] = getStatFromDictionary(playerStats, "22");
+        stats2["moons"] = getStatFromDictionary(playerStats, "28");
+        stats2["diamondShards"] = getStatFromDictionary(playerStats, "29");
+        stats2["gauntlets"] = getStatFromDictionary(playerStats, "40");
+        stats2["lists"] = getStatFromDictionary(playerStats, "41");
+
+        auto& shards = stats2["shards"];
+        for (int i = 16; i <= 27; i++) {
+            if (i == 21 || i == 22) continue; // skip demon keys and total orbs
+
+            int index = i - 16;
+            if (i > 22) index -= 2;
+
+            shards[PATH_NAMES[index]] = getStatFromDictionary(playerStats, fmt::to_string(i));
+        }
+
+        auto& paths = variables["paths"];
+        for (int i = 0; i <= PATH_NAMES.size(); i++) {
+            paths[PATH_NAMES[i]] = getStatFromDictionary(playerStats, fmt::to_string(i + FIRST_PATH));
+        }
+    }
+
+    inline int getStatIndex(int i, gd::unordered_map<int, int> const& seeds, gd::unordered_map<int, int> const& rands) {
+        auto rand = rands.find(i);
+        auto seed = seeds.find(i);
+        if (rand != rands.end() && seed != seeds.end()) {
+            return rand->second - seed->second;
+        }
+        return 0;
+    }
+
+    // when m_usePlayerStatsCCDictionary is false
+    void playerStatsWithMaps(rift::Object& variables) {
+        auto gsm = utils::get<GameStatsManager>();
+        auto const& seeds = gsm->m_playerStatsSeedMap;
+        auto const& rands = gsm->m_playerStatsRandMap;
+
+        auto& stats = variables["stats"];
+        for (int i = 1; i <= STAT_NAMES_1.size(); i++) {
+            stats[STAT_NAMES_1[i - 1]] = getStatIndex(i, seeds, rands);
+        }
+
+        auto& stats2 = const_cast<rift::Object&>(stats.getObject()); // FIXME: add this api to rift
+        stats2["keys"] = getStatIndex(21, seeds, rands);
+        stats2["totalOrbs"] = getStatIndex(22, seeds, rands);
+        stats2["moons"] = getStatIndex(28, seeds, rands);
+        stats2["diamondShards"] = getStatIndex(29, seeds, rands);
+        stats2["gauntlets"] = getStatIndex(40, seeds, rands);
+        stats2["lists"] = getStatIndex(41, seeds, rands);
+
+        auto& shards = stats2["shards"];
+        for (int i = 16; i <= 27; i++) {
+            if (i == 21 || i == 22) continue; // skip demon keys and total orbs
+
+            int index = i - 16;
+            if (i > 22) index -= 2;
+
+            shards[PATH_NAMES[index]] = getStatIndex(i, seeds, rands);
+        }
+
+        auto& paths = variables["paths"];
+        for (int i = FIRST_PATH; i <= LAST_PATH; i++) {
+            paths[PATH_NAMES[i - FIRST_PATH]] = getStatIndex(i, seeds, rands);
+        }
     }
 
     void VariableManager::fetchGeneralData() {
-        auto* gameManager = GameManager::get();
+        auto* gameManager = utils::get<GameManager>();
         m_variables["username"] = rift::Value::string(gameManager->m_playerName);
-        m_variables["cubeIcon"] = rift::Value::integer(utils::getPlayerIcon(PlayerMode::Cube));
-        m_variables["shipIcon"] = rift::Value::integer(utils::getPlayerIcon(PlayerMode::Ship));
-        m_variables["ballIcon"] = rift::Value::integer(utils::getPlayerIcon(PlayerMode::Ball));
-        m_variables["ufoIcon"] = rift::Value::integer(utils::getPlayerIcon(PlayerMode::UFO));
-        m_variables["waveIcon"] = rift::Value::integer(utils::getPlayerIcon(PlayerMode::Wave));
-        m_variables["robotIcon"] = rift::Value::integer(utils::getPlayerIcon(PlayerMode::Robot));
-        m_variables["spiderIcon"] = rift::Value::integer(utils::getPlayerIcon(PlayerMode::Spider));
-        m_variables["swingIcon"] = rift::Value::integer(utils::getPlayerIcon(PlayerMode::Swing));
+        m_variables["cubeIcon"] = utils::getPlayerIcon(PlayerMode::Cube);
+        m_variables["shipIcon"] = utils::getPlayerIcon(PlayerMode::Ship);
+        m_variables["ballIcon"] = utils::getPlayerIcon(PlayerMode::Ball);
+        m_variables["ufoIcon"] = utils::getPlayerIcon(PlayerMode::UFO);
+        m_variables["waveIcon"] = utils::getPlayerIcon(PlayerMode::Wave);
+        m_variables["robotIcon"] = utils::getPlayerIcon(PlayerMode::Robot);
+        m_variables["spiderIcon"] = utils::getPlayerIcon(PlayerMode::Spider);
+        m_variables["swingIcon"] = utils::getPlayerIcon(PlayerMode::Swing);
+
+        auto gsm = utils::get<GameStatsManager>();
+        if (gsm->m_usePlayerStatsCCDictionary) {
+            playerStatsWithCCDict(m_variables);
+        } else {
+            playerStatsWithMaps(m_variables);
+        }
+
+        if (gsm->m_activePath >= FIRST_PATH && gsm->m_activePath <= LAST_PATH) {
+            m_variables["currentPath"] = PATH_NAMES[gsm->m_activePath - FIRST_PATH];
+        } else {
+            m_variables["currentPath"] = {};
+        }
+
     }
 
     void VariableManager::fetchTimeData() {
         auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        auto localTime = std::localtime(&time);
-        m_variables["hour"] = rift::Value::integer(localTime->tm_hour);
-        m_variables["minute"] = rift::Value::integer(localTime->tm_min);
-        m_variables["second"] = rift::Value::integer(localTime->tm_sec);
-        m_variables["day"] = rift::Value::integer(localTime->tm_mday);
-        m_variables["month"] = rift::Value::integer(localTime->tm_mon + 1);
-        m_variables["monthName"] = rift::Value::string(utils::getMonthName(localTime->tm_mon));
-        m_variables["year"] = rift::Value::integer(localTime->tm_year + 1900);
-        m_variables["clock"] = rift::Value::string(utils::getClock());
-        m_variables["clock12"] = rift::Value::string(utils::getClock(true));
+        auto localTime = fmt::localtime(time);
+        m_variables["hour"] = localTime.tm_hour;
+        m_variables["minute"] = localTime.tm_min;
+        m_variables["second"] = localTime.tm_sec;
+        m_variables["day"] = localTime.tm_mday;
+        m_variables["month"] = localTime.tm_mon + 1;
+        m_variables["monthName"] = utils::getMonthName(localTime.tm_mon);
+        m_variables["year"] = localTime.tm_year + 1900;
+        m_variables["clock"] = utils::getClock();
+        m_variables["clock12"] = utils::getClock(true);
     }
 
     void VariableManager::fetchHacksData() {
@@ -254,14 +421,6 @@ namespace eclipse::labels {
         m_variables["speedhack"] = rift::Value::boolean(config::get("global.speedhack.toggle", false));
         m_variables["speedhackSpeed"] = rift::Value::floating(config::get("global.speedhack", 1.f));
         m_variables["framestepper"] = rift::Value::boolean(config::get("player.framestepper", false));
-        m_variables["autoclick"] = rift::Value::boolean(config::get("player.autoclick", false));
-        m_variables["showTrajectory"] = rift::Value::boolean(config::get("player.showtrajectory", false));
-        m_variables["jumpHack"] = rift::Value::boolean(config::get("player.jumphack", false));
-        m_variables["botDisabled"] = rift::Value::boolean(config::get("bot.state", 0));
-        m_variables["recordingMacro"] = rift::Value::boolean(config::get("bot.state", 1));
-        m_variables["replayingMacro"] = rift::Value::boolean(config::get("bot.state", 2));
-        m_variables["clickTP"] = rift::Value::boolean(config::get("player.clicktp", false));
-        m_variables["respawnDelay"] = rift::Value::boolean(config::get("player.respawndelay.toggle", false));
     }
 
     static std::string const& cachedBase64Decode(const std::string& str) {
@@ -272,6 +431,53 @@ namespace eclipse::labels {
         if (str.empty()) return s_lastDecoded = "";
         s_lastDecoded = cocos2d::ZipUtils::base64URLDecode(str);
         return s_lastDecoded;
+    }
+
+    constexpr bool isRobTopLevelID(int levelID) {
+        return (levelID >= 1 && levelID <= 22) // Official levels
+               || (levelID >= 5001 && levelID <= 5004) // Platformer levels
+               || (levelID >= 1001 && levelID <= 1003) // GD Meltdown
+               || (levelID >= 2001 && levelID <= 2010) // GD World
+               || (levelID >= 4001 && levelID <= 4003) // GD SubZero
+               || levelID == 3001; // "The Challenge"
+    }
+
+    int getTotalOrbsForLevel(GJGameLevel* level, int levelID) {
+        static int s_lastLevelID = -1;
+        static int s_lastTotalOrbs = 0;
+        if (levelID == s_lastLevelID) return s_lastTotalOrbs;
+        s_lastLevelID = levelID;
+        s_lastTotalOrbs = utils::get<GameStatsManager>()->getBaseCurrencyForLevel(level);
+        return s_lastTotalOrbs;
+    }
+
+    int getCurrentOrbsForLevel(GJGameLevel* level, int levelID) {
+        auto gsm = utils::get<GameStatsManager>();
+        auto totalOrbs = getTotalOrbsForLevel(level, levelID);
+        auto dailyId = level->m_dailyID.value();
+
+        cocos2d::CCDictionary* currencyScores;
+        if (dailyId <= 0) {
+            if (level->m_levelType == GJLevelType::Local) {
+                currencyScores = gsm->m_mainCurrencyScores;
+            } else if (level->m_gauntletLevel) {
+                currencyScores = gsm->m_gauntletCurrencyScores;
+            } else {
+                currencyScores = gsm->m_onlineCurrencyScores;
+            }
+            dailyId = levelID;
+        } else {
+            currencyScores = gsm->m_timelyCurrencyScores;
+        }
+
+        auto& str = currencyScores->valueForKey(fmt::to_string(dailyId))->m_sString;
+        if (str.empty()) return 0;
+        if (auto res = geode::utils::numFromString<int>(str)) {
+            auto resValue = res.unwrap();
+            if (resValue >= 100) return totalOrbs * 1.25;
+            return std::floor(totalOrbs * (resValue / 100.f));
+        }
+        return 0;
     }
 
     void VariableManager::fetchLevelData(GJGameLevel* level) {
@@ -289,25 +495,28 @@ namespace eclipse::labels {
             return;
         }
 
-        auto levelID = level->m_levelID;
-        bool isRobtopLevel = (levelID > 0 && levelID < 100) || (levelID >= 3001 && levelID <= 6000);
+        auto levelID = level->m_levelID.value();
+        bool isRobtopLevel = isRobTopLevelID(levelID);
         auto levelDifficulty = getLevelDifficulty(level);
-        m_variables["levelID"] = rift::Value::integer(levelID);
+        m_variables["levelID"] = levelID;
         m_variables["levelName"] = rift::Value::string(level->m_levelName);
-        m_variables["levelDescription"] = rift::Value::string(cachedBase64Decode(level->m_levelDesc));
+        m_variables["levelDescription"] = cachedBase64Decode(level->m_levelDesc);
         m_variables["author"] = rift::Value::string(isRobtopLevel ? "RobTop" : level->m_creatorName);
-        m_variables["isRobtopLevel"] = rift::Value::boolean(isRobtopLevel);
-        m_variables["levelAttempts"] = rift::Value::integer(level->m_attempts);
-        m_variables["levelStars"] = rift::Value::integer(level->m_stars);
-        m_variables["difficulty"] = rift::Value::string(getLevelDifficultyString(levelDifficulty));
-        m_variables["difficultyKey"] = rift::Value::string(getLevelDifficultyKey(levelDifficulty));
-        m_variables["practicePercent"] = rift::Value::integer(level->m_practicePercent);
-        m_variables["bestPercent"] = rift::Value::integer(level->m_normalPercent);
-        m_variables["bestTime"] = rift::Value::floating(level->m_bestTime);
-        if (GJBaseGameLayer::get()->m_isPlatformer)
-            m_variables["best"] = rift::Value::string(formatTime(level->m_bestTime));
+        m_variables["isRobtopLevel"] = isRobtopLevel;
+        m_variables["levelAttempts"] = level->m_attempts.value();
+        m_variables["levelStars"] = level->m_stars.value();
+        m_variables["difficulty"] = getLevelDifficultyString(levelDifficulty);
+        m_variables["difficultyKey"] = getLevelDifficultyKey(levelDifficulty);
+        m_variables["practicePercent"] = level->m_practicePercent;
+        m_variables["bestPercent"] = level->m_normalPercent.value();
+        m_variables["bestTime"] = level->m_bestTime;
+        if (utils::get<GJBaseGameLayer>()->m_isPlatformer)
+            m_variables["best"] =formatTime(level->m_bestTime);
         else
-            m_variables["best"] = rift::Value::integer(level->m_normalPercent);
+            m_variables["best"] = level->m_normalPercent.value();
+
+        m_variables["totalLevelOrbs"] = static_cast<int>(getTotalOrbsForLevel(level, levelID) * 1.25);
+        m_variables["levelOrbs"] = getCurrentOrbsForLevel(level, levelID);
     }
 
     void VariableManager::fetchPlayerData(PlayerObject* player, bool isPlayer2) {
@@ -321,19 +530,19 @@ namespace eclipse::labels {
             }
             if (!isPlayer2) {
                 auto gamemode = utils::getGameMode(nullptr);
-                m_variables["gamemode"] = rift::Value::string(utils::gameModeName(gamemode));
-                m_variables["playerIcon"] = rift::Value::integer(utils::getPlayerIcon(gamemode));
+                m_variables["gamemode"] = utils::gameModeName(gamemode);
+                m_variables["playerIcon"] = utils::getPlayerIcon(gamemode);
             }
             return;
         }
 
-        m_variables[isPlayer2 ? "player2X" : "playerX"] = rift::Value::floating(player->m_position.x);
-        m_variables[isPlayer2 ? "player2Y" : "playerY"] = rift::Value::floating(player->m_position.y);
+        m_variables[isPlayer2 ? "player2X" : "playerX"] = player->m_position.x;
+        m_variables[isPlayer2 ? "player2Y" : "playerY"] = player->m_position.y;
 
         if (!isPlayer2) {
             auto gamemode = utils::getGameMode(player);
-            m_variables["gamemode"] = rift::Value::string(utils::gameModeName(gamemode));
-            m_variables["playerIcon"] = rift::Value::integer(utils::getPlayerIcon(gamemode));
+            m_variables["gamemode"] = utils::gameModeName(gamemode);
+            m_variables["playerIcon"] = utils::getPlayerIcon(gamemode);
         }
     }
 
@@ -357,30 +566,74 @@ namespace eclipse::labels {
             return;
         }
 
-        m_variables["attempt"] = rift::Value::integer(gameLayer->m_attempts);
-        m_variables["isTestMode"] = rift::Value::boolean(gameLayer->m_isTestMode);
-        m_variables["isPracticeMode"] = rift::Value::boolean(gameLayer->m_isPracticeMode);
-        m_variables["isPlatformer"] = rift::Value::boolean(gameLayer->m_isPlatformer);
-        m_variables["levelTime"] = rift::Value::floating(gameLayer->m_gameState.m_levelTime);
-        m_variables["levelLength"] = rift::Value::floating(gameLayer->m_levelLength);
-        m_variables["levelDuration"] = rift::Value::floating(gameLayer->m_level->m_timestamp / 240.f);
-        m_variables["time"] = rift::Value::string(utils::formatTime(gameLayer->m_gameState.m_levelTime));
-        m_variables["frame"] = rift::Value::integer(gameLayer->m_gameState.m_currentProgress);
-        m_variables["frameReal"] = rift::Value::integer(gameLayer->m_gameState.m_levelTime * utils::getTPS());
-        m_variables["isDead"] = rift::Value::boolean(gameLayer->m_player1->m_isDead);
-        m_variables["isDualMode"] = rift::Value::boolean(gameLayer->m_player2 != nullptr && gameLayer->m_player2->isRunning()); // can m_isDualMode be added already
-        m_variables["noclipDeaths"] = rift::Value::integer(config::getTemp("noclipDeaths", 0));
-        m_variables["noclipAccuracy"] = rift::Value::floating(config::getTemp("noclipAccuracy", 100.f));
-        m_variables["progress"] = rift::Value::floating(utils::getActualProgress(gameLayer));
+        m_variables["attempt"] = gameLayer->m_attempts;
+        m_variables["isTestMode"] = gameLayer->m_isTestMode;
+        m_variables["isPracticeMode"] = gameLayer->m_isPracticeMode;
+        m_variables["isPlatformer"] = gameLayer->m_isPlatformer;
+        m_variables["levelTime"] = gameLayer->m_gameState.m_levelTime;
+        m_variables["levelLength"] = gameLayer->m_levelLength;
+        m_variables["levelDuration"] = gameLayer->m_level->m_timestamp / 240.f;
+        m_variables["time"] = utils::formatTime(gameLayer->m_gameState.m_levelTime);
+        m_variables["frame"] = gameLayer->m_gameState.m_currentProgress;
+        m_variables["frameReal"] = gameLayer->m_gameState.m_levelTime * utils::getTPS();
+        m_variables["isDead"] = gameLayer->m_player1->m_isDead;
+        m_variables["isDualMode"] = gameLayer->m_player2 != nullptr && gameLayer->m_player2->isRunning();
+        m_variables["noclipDeaths"] = config::getTemp("noclipDeaths", 0);
+        m_variables["noclipAccuracy"] = config::getTemp("noclipAccuracy", 100.f);
+        m_variables["progress"] = utils::getActualProgress(gameLayer);
+        m_variables["timeWarp"] = gameLayer->m_gameState.m_timeWarp;
+        m_variables["gravity"] = gameLayer->m_player1->m_gravityMod;
+        m_variables["activeObjects"] = gameLayer->m_activeObjects;
+        m_variables["gradients"] = gameLayer->m_activeGradients;
+        m_variables["particleCount"] = gameLayer->m_particleCount;
 
-        if (auto* pl = PlayLayer::get()) {
-            m_variables["editorMode"] = rift::Value::boolean(false);
-            m_variables["realProgress"] = rift::Value::floating(pl->getCurrentPercent());
-            m_variables["objects"] = rift::Value::integer(gameLayer->m_level->m_objectCount);
-        } else if (auto* ed = LevelEditorLayer::get()) {
-            m_variables["editorMode"] = rift::Value::boolean(true);
-            m_variables["realProgress"] = rift::Value::floating(0.f);
-            m_variables["objects"] = rift::Value::integer(ed->m_objects->count());
+        auto fmod = utils::get<FMODAudioEngine>();
+        m_variables["songsCount"] = fmod->countActiveMusic();
+        m_variables["sfxCount"] = fmod->countActiveEffects();
+
+        m_variables["moveTriggerCount"] = gameLayer->m_movedCountDisplay;
+        m_variables["rotateTriggerCount"] = gameLayer->m_rotatedCountDisplay;
+        m_variables["scaleTriggerCount"] = gameLayer->m_scaledCountDisplay;
+        m_variables["followTriggerCount"] = gameLayer->m_followedCountDisplay;
+
+        m_variables["areaMoveTrigger"] = gameLayer->m_areaMovedCountTotalDisplay;
+        m_variables["areaMoveTriggerTotal"] = gameLayer->m_areaMovedCountDisplay;
+        m_variables["areaRotateTrigger"] = gameLayer->m_areaRotatedCountTotalDisplay;
+        m_variables["areaRotateTriggerTotal"] = gameLayer->m_areaRotatedCountDisplay;
+        m_variables["areaScaleTrigger"] = gameLayer->m_areaScaledCountTotalDisplay;
+        m_variables["areaScaleTriggerTotal"] = gameLayer->m_areaScaledCountDisplay;
+        m_variables["areaColOpTrigger"] = gameLayer->m_areaColorCountTotalDisplay;
+        m_variables["areaColOpTriggerTotal"] = gameLayer->m_areaColorCountDisplay;
+
+        auto coinsArr = rift::Array();
+        for (int i = 0; i < s_coins.size(); ++i) {
+            auto coinKey = gameLayer->m_level->getCoinKey(i + 1);
+            bool saved = false;
+
+            if (gameLayer->m_level->m_levelType == GJLevelType::Local) {
+                saved = utils::get<GameStatsManager>()->hasSecretCoin(coinKey);
+            } else {
+                saved = utils::get<GameStatsManager>()->hasUserCoin(coinKey);
+            }
+
+            if (saved) {
+                coinsArr.push_back(2);
+                continue;
+            }
+
+            auto pickedUp = gameLayer->m_collectedItems->objectForKey(fmt::to_string(i + 1)) != nullptr;
+            coinsArr.push_back(pickedUp ? 1 : 0);
+        }
+        m_variables["coins"] = coinsArr;
+
+        if (auto* pl = utils::get<PlayLayer>()) {
+            m_variables["editorMode"] = false;
+            m_variables["realProgress"] = pl->getCurrentPercent();
+            m_variables["objects"] = gameLayer->m_level->m_objectCount.value();
+        } else if (auto* ed = utils::get<LevelEditorLayer>()) {
+            m_variables["editorMode"] = true;
+            m_variables["realProgress"] = 0.f;
+            m_variables["objects"] = static_cast<int64_t>(ed->m_objects->count());
         }
 
         fetchLevelData(gameLayer->m_level);
@@ -399,7 +652,7 @@ namespace eclipse::labels {
         fetchTimeData();
 
         // Game state
-        fetchGameplayData(GJBaseGameLayer::get());
+        fetchGameplayData(utils::get<GJBaseGameLayer>());
     }
 
     class $modify(LabelsGJBGLHook, GJBaseGameLayer) {
@@ -414,14 +667,14 @@ namespace eclipse::labels {
             constexpr time_t interval = 250;
             if (diff >= interval) {
                 auto tps = s_frames / (diff / 1000.0);
-                VariableManager::get().setVariable("tps", rift::Value::floating(tps));
+                VariableManager::get().setVariable("tps", tps);
                 s_lastUpdate = now;
                 s_frames = 0;
             }
         }
     };
 
-    class $modify(BestRunPLHook, PlayLayer) {
+    class $modify(VariablesPLHook, PlayLayer) {
         struct Fields {
             float m_runFrom = 0.f;
             float m_lastRunFrom = 0.f;
@@ -429,12 +682,21 @@ namespace eclipse::labels {
             float m_lastBestRun = 0.f;
         };
 
+        void addObject(GameObject* obj) {
+            PlayLayer::addObject(obj);
+            auto id = obj->m_objectID;
+
+            if (id == 142 || id == 1329)
+                s_coins.push_back(static_cast<EffectGameObject*>(obj));
+        }
+
         bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
+            s_coins.clear();
             if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
 
             auto& manager = VariableManager::get();
-            manager.setVariable("runFrom", rift::Value::floating(0.f));
-            manager.setVariable("bestRun", rift::Value::floating(0.f));
+            manager.setVariable("runFrom", 0.f);
+            manager.setVariable("bestRun", 0.f);
 
             return true;
         }
@@ -446,8 +708,8 @@ namespace eclipse::labels {
                 fields->m_lastBestRun = fields->m_bestRun;
                 fields->m_lastRunFrom = fields->m_runFrom;
                 auto& manager = VariableManager::get();
-                manager.setVariable("runFrom", rift::Value::floating(fields->m_runFrom));
-                manager.setVariable("bestRun", rift::Value::floating(fields->m_bestRun));
+                manager.setVariable("runFrom", fields->m_runFrom);
+                manager.setVariable("bestRun", fields->m_bestRun);
             }
         }
 
@@ -455,12 +717,12 @@ namespace eclipse::labels {
             PlayLayer::levelComplete();
             saveBestRun();
         }
-        
+
         void destroyPlayer(PlayerObject* player, GameObject* object) override {
             auto percentage = utils::getActualProgress(this);
             PlayLayer::destroyPlayer(player, object);
             if (object != m_anticheatSpike) {
-                VariableManager::get().setVariable("lastDeath", rift::Value::from(percentage));
+                VariableManager::get().setVariable("lastDeath", percentage);
                 saveBestRun();
             }
         }
@@ -469,7 +731,7 @@ namespace eclipse::labels {
             PlayLayer::resetLevel();
             auto from = utils::getActualProgress(this);
             m_fields->m_runFrom = from;
-            VariableManager::get().setVariable("runStart", rift::Value::floating(from));
+            VariableManager::get().setVariable("runStart", from);
         }
     };
 }

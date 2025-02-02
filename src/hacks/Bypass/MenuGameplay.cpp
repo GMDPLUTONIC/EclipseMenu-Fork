@@ -1,17 +1,16 @@
-#include <modules/gui/gui.hpp>
-#include <modules/hack/hack.hpp>
 #include <modules/config/config.hpp>
+#include <modules/gui/gui.hpp>
+#include <modules/gui/components/toggle.hpp>
+#include <modules/hack/hack.hpp>
 #include <modules/keybinds/manager.hpp>
 
 #include <Geode/modify/MenuGameLayer.hpp>
 
 namespace eclipse::hacks::Bypass {
-
-    class MenuGameplay : public hack::Hack {
+    class $hack(MenuGameplay) {
         void init() override {
-            auto tab = gui::MenuTab::find("Bypass");
-
-            tab->addToggle("Menu Gameplay", "bypass.menugameplay")->handleKeybinds();
+            auto tab = gui::MenuTab::find("tab.bypass");
+            tab->addToggle("bypass.menugameplay")->handleKeybinds()->setDescription();
         }
 
         [[nodiscard]] const char* getId() const override { return "Menu Gameplay"; }
@@ -44,5 +43,4 @@ namespace eclipse::hacks::Bypass {
             MenuGameLayer::update(dt);
         }
     };
-
 }

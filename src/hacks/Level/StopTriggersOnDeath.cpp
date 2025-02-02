@@ -1,16 +1,15 @@
-#include <modules/gui/gui.hpp>
-#include <modules/hack/hack.hpp>
 #include <modules/config/config.hpp>
+#include <modules/gui/gui.hpp>
+#include <modules/gui/components/toggle.hpp>
+#include <modules/hack/hack.hpp>
 
 #include <Geode/modify/GJBaseGameLayer.hpp>
 
 namespace eclipse::hacks::Level {
-
-    class StopTriggersOnDeath : public hack::Hack {
+    class $hack(StopTriggersOnDeath) {
         void init() override {
-            auto tab = gui::MenuTab::find("Level");
-
-            tab->addToggle("Stop Triggers On Death", "level.stoptrigondeath")->handleKeybinds();
+            auto tab = gui::MenuTab::find("tab.level");
+            tab->addToggle("level.stoptrigondeath")->setDescription()->handleKeybinds();
         }
 
         [[nodiscard]] const char* getId() const override { return "Stop Triggers On Death"; }
@@ -22,7 +21,7 @@ namespace eclipse::hacks::Level {
         ALL_DELEGATES_AND_SAFE_PRIO("level.stoptrigondeath")
 
         void update(float dt) {
-            if (!PlayLayer::get()) return GJBaseGameLayer::update(dt);
+            if (!utils::get<PlayLayer>()) return GJBaseGameLayer::update(dt);
 
             if ((m_player1 && m_player1->m_isDead) || (m_player2 && m_player2->m_isDead)) return;
 

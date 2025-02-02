@@ -1,20 +1,22 @@
-#include <modules/gui/gui.hpp>
-#include <modules/hack/hack.hpp>
+#include <modules/api/mods.hpp>
 #include <modules/config/config.hpp>
+#include <modules/gui/color.hpp>
+#include <modules/gui/gui.hpp>
+#include <modules/gui/components/toggle.hpp>
+#include <modules/hack/hack.hpp>
 
 #include <Geode/binding/GameStatsManager.hpp>
 
-#include <Geode/modify/PlayLayer.hpp>
-#include <Geode/modify/PlayerObject.hpp>
-#include <Geode/modify/RetryLevelLayer.hpp>
 #include <Geode/modify/EndLevelLayer.hpp>
+#include <Geode/modify/PlayerObject.hpp>
+#include <Geode/modify/PlayLayer.hpp>
+#include <Geode/modify/RetryLevelLayer.hpp>
 
 namespace eclipse::hacks::Global {
-
     enum class SafeModeState {
-        Normal,    // no cheats detected
-        Cheating,  // cheats detected
-        Tripped    // cheated in current attempt
+        Normal,   // no cheats detected
+        Cheating, // cheats detected
+        Tripped   // cheated in current attempt
     };
 
     // Contains the state of activated hacks in an attempt
@@ -23,10 +25,13 @@ namespace eclipse::hacks::Global {
     // Whether the last attempt had tripped any cheats
     bool s_trippedLastAttempt = false;
 
-    class AutoSafeMode : public hack::Hack {
-    public:
+    class $hack(AutoSafeMode) {
         static bool hasCheats() {
-            const auto& hacks = hack::Hack::getHacks();
+            for (auto& [_, callback] : api::getCheats()) {
+                if (callback()) return true;
+            }
+
+            const auto& hacks = hack::getCheatingHacks();
             return std::ranges::any_of(hacks, [](auto& hack) {
                 return hack->isCheating();
             });
@@ -40,11 +45,18 @@ namespace eclipse::hacks::Global {
         }
 
         static void updateCheatStates() {
-            for (const auto& hack : hack::Hack::getHacks()) {
+            for (const auto& hack : hack::getCheatingHacks()) {
                 if (hack->isCheating()) {
                     s_attemptCheats[hack->getId()] = true;
                 } else if (s_attemptCheats.contains(hack->getId())) {
                     s_attemptCheats[hack->getId()] = false;
+                }
+            }
+            for (const auto& [id, active] : api::getCheats()) {
+                if (active()) {
+                    s_attemptCheats[id] = true;
+                } else if (s_attemptCheats.contains(id)) {
+                    s_attemptCheats[id] = false;
                 }
             }
         }
@@ -67,20 +79,18 @@ namespace eclipse::hacks::Global {
             if (!s_trippedLastAttempt && !hasCheats())
                 return;
 
-            FLAlertLayer::create(nullptr,
+            FLAlertLayer::create(
+                nullptr,
                 "Cheats Detected", message, "OK",
                 nullptr, 400, true, 0, 1
             )->show();
         }
 
-    private:
         void init() override {
-            auto tab = gui::MenuTab::find("Global");
+            auto tab = gui::MenuTab::find("tab.global");
 
             config::setIfEmpty("global.autosafemode", true);
-            tab->addToggle("Auto Safe Mode", "global.autosafemode")
-                ->handleKeybinds()
-                ->setDescription("Automatically enables safe mode if cheats are enabled");
+            tab->addToggle("global.autosafemode")->handleKeybinds()->setDescription();
         }
 
         void update() override {
@@ -94,20 +104,19 @@ namespace eclipse::hacks::Global {
         [[nodiscard]] const char* getId() const override { return "Auto Safe Mode"; }
     };
 
-    class SafeMode : public hack::Hack {
+    class $hack(SafeMode) {
         void init() override {
-            auto tab = gui::MenuTab::find("Global");
+            auto tab = gui::MenuTab::find("tab.global");
 
             config::setIfEmpty("global.safemode", false);
             config::setIfEmpty("global.safemode.freeze_attempts", true);
             config::setIfEmpty("global.safemode.freeze_jumps", true);
 
-            tab->addToggle("Safe Mode", "global.safemode")
-                ->handleKeybinds()
-                ->addOptions([](std::shared_ptr<gui::MenuTab> options) {
-                    options->addToggle("Freeze Attempt Count", "global.safemode.freeze_attempts");
-                    options->addToggle("Freeze Jump Count", "global.safemode.freeze_jumps");
-                });
+            tab->addToggle("global.safemode")->handleKeybinds()->setDescription()
+               ->addOptions([](std::shared_ptr<gui::MenuTab> options) {
+                   options->addToggle("global.safemode.freeze_attempts");
+                   options->addToggle("global.safemode.freeze_jumps");
+               });
         }
 
         [[nodiscard]] const char* getId() const override { return "Safe Mode"; }
@@ -125,7 +134,7 @@ namespace eclipse::hacks::Global {
         ENABLE_SAFE_HOOKS_ALL()
 
         bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
-            auto* GSM = GameStatsManager::sharedState();
+            auto* GSM = utils::get<GameStatsManager>();
 
             m_fields->totalJumps = GSM->getStat("1");
             m_fields->totalAttempts = GSM->getStat("2");
@@ -142,7 +151,7 @@ namespace eclipse::hacks::Global {
             if (safeMode || AutoSafeMode::shouldEnable()) {
                 this->m_isTestMode = true;
 
-                auto* GSM = GameStatsManager::sharedState();
+                auto* GSM = utils::get<GameStatsManager>();
 
                 if (config::get<bool>("global.safemode.freeze_jumps", true))
                     GSM->setStat("1", m_fields->totalJumps);
@@ -183,7 +192,9 @@ namespace eclipse::hacks::Global {
         ENABLE_SAFE_HOOKS_ALL()
 
         void incrementJumps() {
-            if (config::get<bool>("global.safemode", false) || AutoSafeMode::shouldEnable() && config::get<bool>("global.safemode.freeze_jumps", true))
+            if (config::get<bool>("global.safemode", false)
+                || AutoSafeMode::shouldEnable()
+                && config::get<bool>("global.safemode.freeze_jumps", true))
                 return;
 
             PlayerObject::incrementJumps();
@@ -202,8 +213,8 @@ namespace eclipse::hacks::Global {
         auto btn = geode::cocos::CCMenuItemExt::createSpriteExtra(ci, [msg](auto) {
             AutoSafeMode::showPopup(msg);
         });
-        btn->setAnchorPoint({ 0.45f, 0.2f });
-        btn->setPosition({ -165, 100 });
+        btn->setAnchorPoint({0.45f, 0.2f});
+        btn->setPosition({-165, 100});
         btn->setID("cheat-indicator"_spr);
         return btn;
     }
@@ -226,7 +237,7 @@ namespace eclipse::hacks::Global {
 
             auto btn = createCI();
             if (this->getChildByIDRecursive("absolllute.megahack/cheat-indicator")) {
-                btn->setPosition({ -168, 90 });
+                btn->setPosition({-168, 90});
             }
 
             auto menu = m_mainLayer->getChildByID("button-menu");
@@ -234,5 +245,4 @@ namespace eclipse::hacks::Global {
             if (menu) menu->addChild(btn);
         }
     };
-
 }

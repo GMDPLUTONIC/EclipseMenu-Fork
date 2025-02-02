@@ -1,9 +1,7 @@
 #pragma once
 
 #include <random>
-#include <modules/gui/color.hpp>
-#include <Geode/binding/GJBaseGameLayer.hpp>
-#include <modules/debug/trace.hpp>
+#include <modules/utils/SingletonCache.hpp>
 
 enum class PlayerMode {
     Cube, Ship, Ball,
@@ -11,8 +9,11 @@ enum class PlayerMode {
     Spider, Swing
 };
 
-namespace eclipse::utils {
+namespace eclipse::gui {
+    class Color;
+}
 
+namespace eclipse::utils {
     /// @brief Returns a random device.
     /// @return Random device.
     std::random_device& getRng();
@@ -22,7 +23,7 @@ namespace eclipse::utils {
     /// @param min Minimum value.
     /// @param max Maximum value.
     /// @return Random number between min and max.
-    template<typename T>
+    template <typename T>
     T random(T min, T max) {
         if constexpr (std::is_integral_v<T>) {
             std::uniform_int_distribution<T> dist(min, max);
@@ -39,7 +40,7 @@ namespace eclipse::utils {
     /// @tparam T Type of the number.
     /// @param max Maximum value.
     /// @return Random number between 0 and max.
-    template<typename T>
+    template <typename T>
     T random(T max) {
         return random<T>(0, max);
     }
@@ -53,7 +54,7 @@ namespace eclipse::utils {
     /// geode::log::info("Member: {}", member);\n
     /// member = 42;
     /// @warning Use with caution, for debugging purposes only.
-    template<typename T>
+    template <typename T>
     [[deprecated("Don't use MBO!")]] constexpr T& memberByOffset(void* ptr, size_t offset) {
         return *reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(ptr) + offset);
     }
@@ -80,7 +81,7 @@ namespace eclipse::utils {
     /// @brief Bugfixed version of getCurrentPercent.
     /// @param game GJBaseGameLayer to get the progress from.
     /// @return Actual progress of the level.
-    float getActualProgress(GJBaseGameLayer* game);
+    float getActualProgress(class GJBaseGameLayer* game);
 
     /// @brief Make the cursor visible/hidden under certain conditions
     void updateCursorState(bool visible);
@@ -88,7 +89,11 @@ namespace eclipse::utils {
     /// @brief Get month name from its number. (0-11)
     const char* getMonthName(int month);
 
+    using millis = std::chrono::milliseconds;
+    using seconds = std::chrono::seconds;
+
     /// @brief Get the current timestamp.
+    template <typename D = millis>
     time_t getTimestamp();
 
     /// @brief Get a rainbow color for specific parameters
@@ -99,7 +104,7 @@ namespace eclipse::utils {
     gui::Color getRainbowColor(float speed, float saturation, float value, float offset = 0.f);
 
     /// @brief Get the current player game mode. If player is nullptr, returns selected profile icon.
-    PlayerMode getGameMode(PlayerObject* player);
+    PlayerMode getGameMode(class PlayerObject* player);
 
     /// @brief Get the name of a game mode.
     const char* gameModeName(PlayerMode mode);
@@ -111,5 +116,44 @@ namespace eclipse::utils {
     float getTPS();
 
     /// @brief Get custom CCMenu created in UILayer.
-    cocos2d::CCMenu* getEclipseUILayer();
+    class cocos2d::CCMenu* getEclipseUILayer();
+
+    /// @brief Checks if a string matches another one (case-insensitive)
+    bool matchesStringFuzzy(std::string_view haystack, std::string_view needle);
+
+    /// @brief Returns a specific page of items from a given Vector.
+    /// @tparam T Type of item.
+    /// @param array Vector to paginate.
+    /// @param size Amount of items per page.
+    /// @param page Page number to retrieve.
+    /// @return A paginated span containing the items of the specified page.
+    template <typename T>
+    std::span<T> paginate(const std::vector<T>& array, int size, int page) {
+        if (size <= 0) return {};
+        int startIndex = page * size;
+        int endIndex = std::min(startIndex + size, static_cast<int>(array.size()));
+        if (startIndex >= array.size()) return {};
+        // result.insert(result.end(), array.begin() + startIndex, array.begin() + endIndex);
+        return {const_cast<T*>(array.data()) + startIndex, static_cast<size_t>(endIndex - startIndex)};
+    }
+
+    /// @brief Returns a "gradual" page of items from a given Vector.
+    /// @tparam T Type of item.
+    /// @param array Vector to paginate.
+    /// @param size Amount of items per "gradual" page.
+    /// @param page "Gradual" page number to retrieve.
+    /// @return A paginated span containing the items of the specified "gradual" page.
+    template <typename T>
+    std::span<T> gradualPaginate(const std::vector<T>& array, int size, int page) {
+        if (size <= 0) return {};
+        if (page < 0) return {};
+        int startIndex = page;
+        int endIndex = std::min(startIndex + size, static_cast<int>(array.size()));
+        if (startIndex >= array.size()) return {};
+        // result.insert(result.end(), array.begin() + startIndex, array.begin() + endIndex);
+        return {const_cast<T*>(array.data()) + startIndex, static_cast<size_t>(endIndex - startIndex)};
+    }
+
+    /// @brief Get the module size of the game.
+    size_t getBaseSize();
 }

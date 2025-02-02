@@ -1,18 +1,15 @@
-#include <modules/gui/gui.hpp>
-#include <modules/hack/hack.hpp>
 #include <modules/config/config.hpp>
+#include <modules/gui/gui.hpp>
+#include <modules/gui/components/toggle.hpp>
+#include <modules/hack/hack.hpp>
 
 #include <Geode/modify/LevelInfoLayer.hpp>
 
 namespace eclipse::hacks::Level {
-
-    class AutoSongDownload : public hack::Hack {
+    class $hack(AutoSongDownload) {
         void init() override {
-            auto tab = gui::MenuTab::find("Level");
-
-            tab->addToggle("Auto Song Download", "level.autosongdownload")
-                ->handleKeybinds()
-                ->setDescription("Auto-download song and SFX files when viewing an online level. (Created by Uproxide)");
+            auto tab = gui::MenuTab::find("tab.level");
+            tab->addToggle("level.autosongdownload")->handleKeybinds()->setDescription();
         }
 
         [[nodiscard]] const char* getId() const override { return "Auto Song Download"; }

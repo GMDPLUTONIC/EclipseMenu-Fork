@@ -1,6 +1,7 @@
-#include <modules/gui/gui.hpp>
-#include <modules/hack/hack.hpp>
 #include <modules/config/config.hpp>
+#include <modules/gui/gui.hpp>
+#include <modules/gui/components/toggle.hpp>
+#include <modules/hack/hack.hpp>
 
 #include <Geode/modify/CCMotionStreak.hpp>
 #include <Geode/modify/PlayerObject.hpp>
@@ -10,14 +11,10 @@
 #endif
 
 namespace eclipse::hacks::Player {
-
-    class NoTrail : public hack::Hack {
+    class $hack(NoTrail) {
         void init() override {
-            auto tab = gui::MenuTab::find("Player");
-
-            tab->addToggle("No Trail", "player.notrail")
-                ->handleKeybinds()
-                ->setDescription("Force the player trail off.");
+            auto tab = gui::MenuTab::find("tab.player");
+            tab->addToggle("player.notrail")->handleKeybinds()->setDescription();
         }
 
         [[nodiscard]] const char* getId() const override { return "No Trail"; }
@@ -25,13 +22,10 @@ namespace eclipse::hacks::Player {
 
     REGISTER_HACK(NoTrail)
 
-    class AlwaysTrail : public hack::Hack {
+    class $hack(AlwaysTrail) {
         void init() override {
-            auto tab = gui::MenuTab::find("Player");
-
-            tab->addToggle("Always Show Trail", "player.alwaystrail")
-                ->handleKeybinds()
-                ->setDescription("Always shows the trail.");
+            auto tab = gui::MenuTab::find("tab.player");
+            tab->addToggle("player.alwaystrail")->handleKeybinds()->setDescription();
         }
 
         [[nodiscard]] const char* getId() const override { return "Always Show Trail"; }
@@ -40,7 +34,7 @@ namespace eclipse::hacks::Player {
     REGISTER_HACK(AlwaysTrail)
 
     // CCMotionStreak functions are too small to be hooked on ARM
-#ifdef GEODE_IS_ARM
+    #ifdef GEODE_IS_ARM
     class $modify(NoTrailPOHook, PlayerObject) {
         static void onModify(auto& self) {
             SAFE_HOOKS_ALL();
@@ -56,7 +50,7 @@ namespace eclipse::hacks::Player {
 
         void activateStreak() {
             if (this->levelFlipping()) return;
-            if (GameManager::get()->m_editorEnabled) return;
+            if (utils::get<GameManager>()->m_editorEnabled) return;
             if (this->m_isHidden) return;
 
             this->m_streakRelated4 = true;
@@ -69,7 +63,7 @@ namespace eclipse::hacks::Player {
             }
         }
     };
-#else
+    #else
     class $modify(NoTrailCCMSHook, cocos2d::CCMotionStreak) {
         static void onModify(auto& self) {
             SAFE_HOOKS_ALL();
@@ -80,5 +74,5 @@ namespace eclipse::hacks::Player {
         void resumeStroke() {}
         void stopStroke() {}
     };
-#endif
+    #endif
 }

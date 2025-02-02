@@ -3,7 +3,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 
 project(EclipseMenu VERSION 1.0.0 LANGUAGES CXX)
 
@@ -17,8 +16,14 @@ endif()
 file(GLOB_RECURSE SOURCES src/*.cpp)
 add_library(${PROJECT_NAME} SHARED ${SOURCES} ${MACOS_SOURCES})
 
-# Enable LTO for smaller binaries
-set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+# Configure for GitHub Actions builds
+if (DEFINED ENV{GITHUB_ACTIONS})
+  # Enable LTO for smaller binaries
+  set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE GITHUB_ACTIONS)
+  message(STATUS "GitHub Actions build detected")
+  set(ECLIPSE_DISABLE_INCREMENTAL_LINK ON)
+endif()
 
 # Make sure we can include headers from src
 target_include_directories(${PROJECT_NAME} PRIVATE src include)
@@ -38,12 +43,35 @@ if (WIN32)
   target_compile_definitions(${PROJECT_NAME} PRIVATE _CRT_SECURE_NO_WARNINGS)
 
   # Export all symbols for better debugging
-  set_target_properties(${PROJECT_NAME} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  # UPD: this bloats the binary size, so it's disabled for now
+  # (also it doesn't work for every crashlog anyways)
+  # set_target_properties(${PROJECT_NAME} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
+  # Disable incremental linking if requested
+  if (DEFINED ECLIPSE_DISABLE_INCREMENTAL_LINK)
+    message(STATUS "Disabling incremental linking")
+    if (MSVC)
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /INCREMENTAL:NO")
+      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /INCREMENTAL:NO")
+    elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-incremental:no")
+      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-incremental:no")
+    endif()
+  endif()
 endif()
 
 # macOS specific settings
 if (APPLE)
   set_source_files_properties(${MACOS_SOURCES} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+endif()
+
+# Debug macro
+if (NOT DEFINED ENV{GITHUB_ACTIONS})
+  target_compile_definitions(
+    ${PROJECT_NAME} PRIVATE
+      $<$<CONFIG:Debug>:ECLIPSE_DEBUG_BUILD>
+      $<$<CONFIG:RelWithDebInfo>:ECLIPSE_DEBUG_BUILD>
+  )
 endif()
 
 # Add Geode
@@ -56,6 +84,7 @@ add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
 
 # Libraries
 include(${CMAKE_SOURCE_DIR}/cmake/IncludeLibs.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/Translations.cmake)
 target_link_libraries(${PROJECT_NAME} third_party)
 
 # Setup Geode

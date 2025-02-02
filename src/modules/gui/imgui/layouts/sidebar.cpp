@@ -1,15 +1,20 @@
 #include "sidebar.hpp"
-#include <modules/gui/imgui/imgui.hpp>
 #include <modules/gui/gui.hpp>
+#include <modules/gui/components/base-component.hpp>
+#include <modules/gui/imgui/imgui.hpp>
 #include <modules/gui/theming/manager.hpp>
+#include <modules/i18n/translations.hpp>
 
 namespace eclipse::gui::imgui {
 
     void SidebarLayout::init() {
+        m_tabs.clear();
+
         auto& tabs = Engine::get()->getTabs();
         for (auto& tab : tabs) {
             m_tabs.emplace_back(tab->getTitle(), [tab] {
                 for (auto& component : tab->getComponents()) {
+                    if (component->getFlags() & ComponentFlags::DisableSidebar) continue;
                     ImGuiRenderer::get()->visitComponent(component);
                 }
             });
@@ -32,7 +37,8 @@ namespace eclipse::gui::imgui {
     void SidebarLayout::draw() {
         if (!Engine::get()->isToggled()) return;
 
-        auto scale = ThemeManager::get()->getGlobalScale();
+        auto tm = ThemeManager::get();
+        auto scale = tm->getGlobalScale();
         ImGuiStyle* style = &ImGui::GetStyle();
         style->WindowRounding = 15.f * scale;
 
@@ -74,10 +80,10 @@ namespace eclipse::gui::imgui {
         Tabs currentTabs = Engine::get()->getTabs();
 
         for (int i = 0; i < currentTabs.size(); i++) {
-            std::string it = currentTabs[i]->getTitle().c_str();
+            std::string it = i18n::get_(currentTabs[i]->getTitle());
             ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5, 0.5));
             ImGui::PushStyleColor(ImGuiCol_Button, m_selectedTab == i ? style->Colors[ImGuiCol_Button] : ImVec4(0, 0, 0, 0));
-            ImGui::PushStyleColor(ImGuiCol_Text, style->Colors[ImGuiCol_Text]);
+            ImGui::PushStyleColor(ImGuiCol_Text, currentTabs[i]->isSearchedFor() ? static_cast<ImVec4>(tm->getSearchedColor()) : style->Colors[ImGuiCol_Text]);
             if (ImGui::Button(it.c_str(), ImVec2(160 * scale, 40 * scale))) {
                 m_selectedTab = i;
             }
