@@ -1,81 +1,153 @@
 #include "gruvbox.hpp"
 
 #include <imgui.h>
-#include <imgui_internal.h>
-#include <modules/gui/gui.hpp>
 #include <modules/gui/color.hpp>
+#include <modules/gui/gui.hpp>
 #include <modules/gui/theming/manager.hpp>
 
 namespace eclipse::gui::imgui::themes {
+    bool Gruvbox::checkbox(
+        const std::string& label, bool& value, bool isSearchedFor, const std::function<void()>& postDraw
+    ) const {
+        auto tm = ThemeManager::get();
+        auto textColor = value ? tm->getCheckboxForegroundColor() : tm->getButtonDisabledForeground();
+        auto scale = tm->getGlobalScale();
 
-	bool Gruvbox::checkbox(const std::string &label, bool &value, const std::function<void()> &postDraw) const {
-		auto tm = ThemeManager::get();
-		auto textColor = value ? tm->getCheckboxForegroundColor() : tm->getDisabledColor();
-		auto checkboxColor = value ? tm->getCheckboxCheckmarkColor() : tm->getDisabledColor().darken(0.2f);
+        ImGui::PushItemWidth(-1);
 
-		using namespace ImGui;
-		ImGuiIO& io = ImGui::GetIO();
-		const float cc_sz = 3.0f * io.FontGlobalScale;
-		constexpr float cc_pad = 10.0f;
+        ImGui::PushStyleColor(ImGuiCol_Text, static_cast<ImVec4>(isSearchedFor ? tm->getSearchedColor() : textColor));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.07f, 0.07f, 0.07f, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.04f, 0.04f, 0.04f, 0.5f));
 
-		ImGuiWindow* window = GetCurrentWindow();
-		if (window->SkipItems)
-			return false;
+        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.0f, 0.5f));
 
-		ImGuiContext& g = *GImGui;
-		const ImGuiStyle& style = g.Style;
-		const ImGuiID id = window->GetID(label.c_str());
-		const ImVec2 label_size = CalcTextSize(label.c_str(), nullptr, true);
+        bool toggled = ImGui::Button(label.c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        if (toggled) value = !value;
+        postDraw();
 
-		const ImRect check_bb(
-		window->DC.CursorPos,
-		ImVec2(label_size.y + style.FramePadding.y * 2 + window->DC.CursorPos.x,
-				   label_size.y + style.FramePadding.y * 2 + window->DC.CursorPos.y)
-		);
-		ItemSize({check_bb.GetWidth(), check_bb.GetHeight() - 3}, style.FramePadding.y);
+        ImGui::PopStyleColor(4);
+        ImGui::PopStyleVar();
 
-		ImRect total_bb = check_bb;
-		if (label_size.x > 0)
-			SameLine(0, style.ItemInnerSpacing.x);
-		const ImRect text_bb(
-		    ImVec2(window->DC.CursorPos.x, window->DC.CursorPos.y + style.FramePadding.y),
-			ImVec2(label_size.x + window->DC.CursorPos.x,
-					   label_size.y + window->DC.CursorPos.y + style.FramePadding.y)
-		);
-		if (label_size.x > 0) {
-			ItemSize({check_bb.GetWidth(), check_bb.GetHeight() - 3}, style.FramePadding.y);
-			total_bb = ImRect(check_bb.Min, ImVec2(text_bb.Max.x - cc_pad * 2.0f * io.FontGlobalScale, check_bb.Max.y));
-		}
+        textColor.a *= ImGui::GetStyle().Alpha;
+        ImGui::GetWindowDrawList()->AddRectFilled(
+            ImVec2(ImGui::GetItemRectMax().x - 5 * scale, ImGui::GetItemRectMin().y + 1 * scale),
+            ImVec2(ImGui::GetItemRectMax().x - 2 * scale, ImGui::GetItemRectMax().y - 1 * scale),
+            textColor
+        );
 
-		if (!ItemAdd(total_bb, id))
-			return false;
+        ImGui::PopItemWidth();
 
-		bool hovered, held;
-		bool pressed = ButtonBehavior(total_bb, id, &hovered, &held);
-		postDraw();
-		if (pressed) value = !value;
-		ImVec2 text_pos = text_bb.GetTL();
-		if (hovered) {
-			ImVec2 text_size = text_bb.GetBR();
-			auto fill_color = tm->getButtonHoveredBackground();
-			window->DrawList->AddRectFilled(
-				ImVec2(check_bb.Min.x, check_bb.Min.y),
-				ImVec2(check_bb.Min.x + cc_sz + text_size.x - text_pos.x + cc_pad * 2.0f, check_bb.Max.y), fill_color,
-				style.FrameRounding);
-		}
+        return toggled;
+    }
 
-		window->DrawList->AddRectFilled(
-		    ImVec2(check_bb.Min.x, check_bb.Min.y),
-		    ImVec2(check_bb.Min.x + cc_sz, check_bb.Max.y),
-		    checkboxColor,
-		    style.FrameRounding);
+    bool Gruvbox::checkboxWithSettings(
+        const std::string& label, bool& value, bool isSearchedFor,
+        const std::function<void()>& callback,
+        const std::function<void()>& postDraw,
+        const std::string& popupId
+    ) const {
+        auto tm = ThemeManager::get();
+        auto textColor = value ? tm->getCheckboxForegroundColor() : tm->getButtonDisabledForeground();
+        auto scale = tm->getGlobalScale();
 
-		if (label_size.x > 0.0f) {
-			PushStyleColor(ImGuiCol_Text, static_cast<ImVec4>(textColor));
-			RenderText(ImVec2(check_bb.Min.x + cc_sz + cc_pad, text_pos.y), label.c_str());
-			PopStyleColor();
-		}
+        ImGui::PushItemWidth(-1);
 
-		return pressed;
-	}
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 2));
+        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.0f, 0.5f));
+
+        ImGui::PushStyleColor(ImGuiCol_Text, static_cast<ImVec4>(isSearchedFor ? tm->getSearchedColor() : textColor));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.07f, 0.07f, 0.07f, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.04f, 0.04f, 0.04f, 0.5f));
+
+        auto availWidth = ImGui::GetContentRegionAvail().x;
+        const auto arrowWidth = availWidth * 0.1f;
+        auto buttonSize = ImVec2(availWidth - arrowWidth, 0);
+        auto arrowSize = ImVec2(arrowWidth, 0);
+
+        bool toggled = ImGui::Button(label.c_str(), buttonSize);
+        if (toggled) value = !value;
+        postDraw();
+
+        ImGui::SameLine(0, 0);
+
+        ImGui::PopStyleVar(2);
+        bool openPopup = ImGui::Button(fmt::format("##open_{}", label).c_str(), arrowSize);
+        ImGui::PopItemWidth();
+        ImGui::PopStyleColor(4);
+
+        auto top = ImGui::GetItemRectMin().y + (4.5f * scale);
+        auto bottom = ImGui::GetItemRectMax().y - (4.5f * scale);
+        auto right = ImGui::GetItemRectMax().x - (4.5f * scale);
+        auto side = bottom - top;
+        auto left = right - side;
+        textColor.a *= ImGui::GetStyle().Alpha;
+        ImU32 triangleColor = textColor;
+        ImGui::GetWindowDrawList()->AddTriangleFilled(
+            ImVec2(right, top),
+            ImVec2(left, bottom),
+            ImVec2(right, bottom),
+            triangleColor
+        );
+
+        std::string popupName = popupId.empty() ? fmt::format("##{}", label) : popupId;
+        if (openPopup)
+            ImGui::OpenPopup(popupName.c_str());
+
+        ImGui::SetNextWindowSizeConstraints(ImVec2(240 * tm->getGlobalScale(), 0), ImVec2(FLT_MAX, FLT_MAX));
+        if (ImGui::BeginPopup(popupName.c_str()/*, ImGuiWindowFlags_NoMove*/)) {
+            callback();
+            ImGui::EndPopup();
+        }
+
+        return toggled;
+    }
+
+    bool Gruvbox::button(const std::string& text, bool isSearchedFor) const {
+        ImGui::PushItemWidth(-1);
+
+        auto tm = ThemeManager::get();
+
+        if (isSearchedFor)
+            ImGui::PushStyleColor(ImGuiCol_Text, static_cast<ImVec4>(tm->getSearchedColor()));
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.07f, 0.07f, 0.07f, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.04f, 0.04f, 0.04f, 0.5f));
+
+        bool pressed = ImGui::Button(text.c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 0));
+
+        ImGui::PopStyleColor(isSearchedFor ? 4 : 3);
+
+        // Draw two lines
+        bool isMouseOver = ImGui::IsItemHovered();
+        bool isItemActive = ImGui::IsItemActive();
+
+        Color color;
+        if (isMouseOver) {
+            color = isItemActive ? tm->getButtonActivatedBackground() : tm->getButtonHoveredBackground();
+        } else {
+            color = tm->getButtonBackgroundColor();
+        }
+
+        color.a *= ImGui::GetStyle().Alpha;
+        auto scale = tm->getGlobalScale();
+
+        ImGui::GetWindowDrawList()->AddLine(
+            ImVec2(ImGui::GetItemRectMin().x + 1, ImGui::GetItemRectMin().y + 1),
+            ImVec2(ImGui::GetItemRectMin().x + 1, ImGui::GetItemRectMax().y - 3),
+            color, 2.5f * scale
+        );
+
+        ImGui::GetWindowDrawList()->AddLine(
+            ImVec2(ImGui::GetItemRectMax().x - 2, ImGui::GetItemRectMin().y + 1),
+            ImVec2(ImGui::GetItemRectMax().x - 2, ImGui::GetItemRectMax().y - 3),
+            color, 2.5f * scale
+        );
+
+        ImGui::PopItemWidth();
+
+        return pressed;
+    }
 }
