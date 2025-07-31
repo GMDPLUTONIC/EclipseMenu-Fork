@@ -431,7 +431,7 @@ namespace eclipse::hacks::Level {
                 });
                 options->addInputFloat("level.showhitboxes.bordersize", 0.01f, 10.f, "%.2f");
                 options->addFloatToggle("level.showhitboxes.fillalpha", 0.f, 1.f);
-                options->addFloatToggle("level.showhitboxes.traillength", 1.f, 2000.f, "%.0f");
+                options->addFloatToggle("level.showhitboxes.traillength", 1.f, 200000.f, "%.0f");
             });
 
             tab->addToggle("level.showhitboxes.ondeath")->handleKeybinds()->addOptions([](std::shared_ptr<gui::MenuTab> optionsOnDeath) {
