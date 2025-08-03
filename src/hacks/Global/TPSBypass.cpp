@@ -398,8 +398,6 @@ namespace eclipse::hacks::Global {
     }
 
     class $modify(TPSBypassPLHook, PlayLayer) {
-        ALL_DELEGATES_AND_SAFE_PRIO("global.tpsbypass.toggle")
-
         // we would like to fix the percentage calculation, which uses constant 240 TPS to determine the progress
         int calculationFix() {
             auto timestamp = m_level->m_timestamp;
